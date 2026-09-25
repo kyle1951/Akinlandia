@@ -120,6 +120,12 @@ select {
 .hex.legal {
   cursor: pointer;
 }
+.hex.ghost {
+  fill: rgba(255, 255, 255, 0.18);
+  stroke: rgba(255, 255, 255, 0.5);
+  stroke-dasharray: 4 3;
+  cursor: pointer;
+}
 .hex-highlight {
   fill: none;
   stroke: var(--gold);

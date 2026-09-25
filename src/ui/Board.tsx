@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from 'react';
 import type { GameState, Tile, Unit } from '../engine/types';
-import { edgeCorners, hexCorners, hexToPixel } from '../engine/hex';
+import { edgeCorners, hexCorners, hexToPixel, parseTileId } from '../engine/hex';
 import { tileType } from '../engine/map';
 import { ALLIANCE_COLORS } from '../data/factions';
 
@@ -30,12 +30,24 @@ export function Board({ game, highlights, onTileClick, showCoords }: BoardProps)
   const [dragging, setDragging] = useState(false);
 
   const tiles = useMemo(() => Object.values(game.tiles), [game.tiles]);
+  // highlighted positions with no tile yet (Full Game placement spots)
+  const ghosts = useMemo(() => {
+    const seen = new Set<string>();
+    const out: { id: string; q: number; r: number; kind: HighlightKind }[] = [];
+    for (const h of highlights) {
+      if (game.tiles[h.tileId] || seen.has(h.tileId)) continue;
+      seen.add(h.tileId);
+      const { q, r } = parseTileId(h.tileId);
+      out.push({ id: h.tileId, q, r, kind: h.kind });
+    }
+    return out;
+  }, [highlights, game.tiles]);
   const bounds = useMemo(() => {
     let minX = Infinity;
     let minY = Infinity;
     let maxX = -Infinity;
     let maxY = -Infinity;
-    for (const t of tiles) {
+    for (const t of [...tiles, ...ghosts]) {
       const p = hexToPixel(t, SIZE);
       minX = Math.min(minX, p.x - SIZE);
       maxX = Math.max(maxX, p.x + SIZE);
@@ -44,7 +56,7 @@ export function Board({ game, highlights, onTileClick, showCoords }: BoardProps)
     }
     if (!isFinite(minX)) return { minX: -200, minY: -200, w: 400, h: 400 };
     return { minX: minX - 20, minY: minY - 20, w: maxX - minX + 40, h: maxY - minY + 40 };
-  }, [tiles]);
+  }, [tiles, ghosts]);
 
   const hl = useMemo(() => {
     const m = new Map<string, HighlightKind>();
@@ -113,6 +125,16 @@ export function Board({ game, highlights, onTileClick, showCoords }: BoardProps)
         {tiles.map((t) => (
           <TileView key={t.id} tile={t} game={game} units={unitsByTile.get(t.id) ?? []} highlight={hl.get(t.id)} onClick={() => clickTile(t.id)} showCoords={!!showCoords} />
         ))}
+        {ghosts.map((g) => {
+          const c = hexToPixel(g, SIZE);
+          const corners = hexCorners(c.x, c.y, SIZE);
+          return (
+            <g key={`ghost-${g.id}`} onClick={() => clickTile(g.id)} className="legal">
+              <polygon className="hex ghost" points={pointsStr(corners)} />
+              <polygon className={`hex-highlight ${g.kind}`} points={pointsStr(corners.map((p) => ({ x: p.x + (c.x - p.x) * 0.06, y: p.y + (c.y - p.y) * 0.06 })))} />
+            </g>
+          );
+        })}
       </g>
     </svg>
   );
