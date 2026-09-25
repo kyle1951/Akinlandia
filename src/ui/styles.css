@@ -311,6 +311,7 @@ select {
   align-items: center;
   flex-wrap: wrap;
   pointer-events: none;
+  z-index: 60;
 }
 .topbar > * {
   pointer-events: auto;

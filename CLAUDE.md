@@ -1,0 +1,70 @@
+# CLAUDE.md
+
+Guidance for future sessions working on this repository.
+
+## What this is
+
+A single-page browser implementation of the board game Akinlandia (Vite + React 18 + TypeScript strict,
+Vitest, ESLint). The rules document is `docs/rules.md`; the build brief with binding rulings is
+`BUILD_PROMPT.md`; every interpretation beyond those lives in `DESIGN_DECISIONS.md`. Add a numbered entry
+there whenever you resolve an ambiguity, quoting the rule text it interprets.
+
+## Commands
+
+```bash
+npm run dev        # Vite dev server
+npm run build      # tsc --noEmit + vite build
+npm run typecheck
+npm run lint
+npm test           # unit tests + replay + 200-game simulation (takes a few minutes)
+npm run sim        # simulation only; SIM_GAMES=20 for a quick run, SIM_START=<seed> to shift seeds
+npx vite-node scripts/debug.ts <seed> [tileId]   # replay a failing simulation seed and dump context
+npx vite-node scripts/batch.ts <games> <startSeed> # run bot games and print coverage counters
+```
+
+## Architecture
+
+- `src/engine/` is pure TypeScript with **no React or DOM imports**. Everything else depends on it, never
+  the reverse. Keep it that way; the simulation harness and replay test rely on it being deterministic.
+  - `types.ts` all state, decision, action, task and log types. `GameState` is plain JSON-serialisable data.
+  - `machine.ts` the interpreter: `advance()` pops tasks from `state.tasks` until one sets `state.pending`;
+    `applyAction()` (pure, clones) / `applyActionInPlace()` validate an action against the pending decision,
+    run the handler, record it in `state.actionLog`, then `advance()` again.
+  - `flowSetup.ts` (roles, turn start, allocation, faction order, deployment), `flowMilitary.ts`
+    (sub-phases, orders, Rage/Trojan/Zeus windows, combat, casualties, retreats, captures, Trojan Horse
+    effect), `flowPolitics.ts` (reconciliation, feeding, PLAY/reveal, Apple, Philosophers, elections, end of
+    turn, scoring, Sing-Off), `fullGame.ts` (tile placement setup). Each exports `handleXTask` /
+    `handleXAction`; `machine.ts` chains them.
+  - `rules/` pure rule helpers used by both the flows and the bots: `turnOrder`, `allocation`, `deploy`,
+    `movement`, `combat`, `politics`, `scoring`.
+  - `query.ts` read-only helpers; `core.ts` mutation helpers (log, task queue, units, cards, reaction
+    candidates); `map.ts` builds tiles from a compact spec and validates edge consistency; `hex.ts` axial
+    coordinates (flat-top; direction i is edge i; the neighbour sees edge (i+3)%6); `rng.ts` mulberry32
+    stored in the state; `invariants.ts` the checks the simulation runs after every action.
+- `src/data/` is data only: `quickstartMap.ts` (one 30-tile wedge rotated three times), `tileBag.ts`
+  (Full Game tiles), `cards.ts` (the Appendix deck table), `factions.ts`.
+- `src/bots/heuristic.ts` answers every `PendingDecision` kind; `runner.ts` runs bot games, replays action
+  logs and is the harness the tests and the UI's "run to end" use. Bot randomness derives from
+  `state.rng.s` and the action count without advancing the game's RNG, so replays stay exact.
+- `src/ui/` React: `useGameController` (state, autosave to localStorage, bot pacing, run-to-end,
+  export/import), `GameScreen` (layout, banners, reveal modal, privacy gating, end screen), `Board` (SVG
+  hex map with pan/zoom and highlight callbacks), `DecisionPanel` (one component per decision kind),
+  `SidePanel`, `SetupScreen`, `RulesPanel` (renders `docs/rules.md`), `EndScreen`.
+
+## Conventions
+
+- Decisions are the only interface: UI and bots read `state.pending` and submit an `Action`. Never mutate
+  state from the UI. Anything that needs a choice becomes a task that sets `pending`; anything automatic
+  runs inside a task handler.
+- Tasks are a queue at `state.tasks`; the head task is the one executing. Handlers `popTask()` when done and
+  `pushFront()` follow-up tasks so nested flows (order -> reactions -> moves -> combats -> casualties ->
+  retreat -> ownership) resolve before the enclosing task continues.
+- Attackers stay on their origin tile until a combat is decided (decision 54); captured ships change owner
+  immediately (ruling 18) so the "one alliance per tile" invariant holds after every action.
+- Every roll, shuffle and draw goes through `state.rng`. Log every roll and combat calculation with `log()`.
+- Keep units, buildings, cards and tiles data-driven; the memo's future features (factions, gold, trade,
+  knights, diplomacy, river tiles) are deliberately not implemented.
+- Tests: `tests/helpers.ts` has scenario builders (`newGame`, `toMilitary`, `setActing`, `addUnit`,
+  `setRolls` for controlled dice, `giveCard`). Green moves last in the default alliance order, so a Green
+  sentinel unit keeps a sub-phase open in movement/combat scenarios.
+- Long shell heredocs are unreliable in this environment; write patch scripts to files first.

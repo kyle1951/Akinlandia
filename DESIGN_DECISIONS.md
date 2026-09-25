@@ -136,3 +136,14 @@ Numbered from 41 onward. Each names the rule text it interprets.
 80. **Claiming** is part of the placement action (`claim: true`) and allowed only for a city tile and only while the player has fewer than 2 claimed cities.
 81. **Unplayable tile**: if a drawn tile has no legal spot it is discarded and the player draws again immediately as part of the same turn; the turn passes only when a tile is placed or the supply is empty.
 82. **No cities after setup**: the player receives the unclaimed city nearest (by hex distance) to the last tile they placed, or the first unclaimed city in tile order if they placed none. Still no city: the player starts with nothing and only politics.
+
+### Added while building and testing
+
+83. **Refusals and sea crossings** (footnote 18, "any combats resulting from the remaining movements go forward"): after Rage of Achilles removes some units from a group crossing a sea edge, the group is re-paired: only as many soldier-ship pairs as both counts allow still sail, preferring ships owned by the sailing soldiers; unpaired ships and soldiers stay behind and this is logged.
+84. **Units ordered to stay** (footnote 20, "once a unit is ordered to stay in a tile, that unit may not subsequently be ordered someplace else"): an order disposes of every orderable unit on its source tile, so all of them, including refusers and those left behind, are marked as moved for the rest of the sub-phase.
+85. **Scuttling only alongside orders**: unmanned ships can be destroyed by their General as a side action of any movement decision; a General with nothing to move is not prompted merely to scuttle.
+86. **Bot randomness** ("use the game's seeded RNG for any randomness so bot games are reproducible"): bots seed a private mulberry32 from the game RNG's current state, the action count and the player id. They never advance the game RNG, so replaying an action log reproduces the same game and the same bot choices.
+87. **Defender ships in the Trojan Horse swap** (ruling 33): restored and surviving defender ships accompany the defenders to the attacker's origin tile only if that tile has a sea edge; otherwise they stay in the city and are captured by the attacking alliance like any unmanned ships.
+88. **Captured ships change hands immediately** (ruling 18): ships found unmanned pass to the capturing General the moment their tile is entered, then the General chooses the faction that will fly its flag. This keeps "a tile may only hold pieces of one alliance" true after every action.
+89. **Spent-only defenders and the Trojan Horse**: a tile lost because every defender was spent (ruling 24) is not a "failed attack", so the Trojan Horse window never opens for it.
+90. **Politics reveal and privacy in the UI**: the public reveal of the PLAY envelopes is shown before any "Pass the device" screen for the next private decision, and closes by itself when no human has to act.

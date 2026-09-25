@@ -38,8 +38,19 @@ export function GameScreen({ ctl }: { ctl: Controller }) {
       if (bannerTimer.current) window.clearTimeout(bannerTimer.current);
       bannerTimer.current = window.setTimeout(() => setBanner(null), order.category === 'order' ? 3500 : 2200);
     }
-    if (ev.some((e) => e.data?.reveal) && !ctl.running) setReveal(ev.filter((e) => e.data?.reveal || e.category === 'election' || e.category === 'card'));
+    if (ev.some((e) => e.data?.reveal) && !ctl.running && ctl.speed !== 'instant') setReveal(ev.filter((e) => e.data?.reveal || e.category === 'election' || e.category === 'card'));
   }, [ctl.events, ctl.speed, ctl.running]);
+
+  // The reveal closes by itself unless a human is about to act (they dismiss it when ready).
+  useEffect(() => {
+    if (!reveal) return;
+    if (humanTurn) return;
+    const t = window.setTimeout(() => setReveal(null), 7000);
+    return () => window.clearTimeout(t);
+  }, [reveal, humanTurn]);
+  useEffect(() => {
+    if (ctl.running) setReveal(null);
+  }, [ctl.running]);
 
   useEffect(() => {
     if (isGameOver(game)) setShowEnd(true);
