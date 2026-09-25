@@ -1,0 +1,10 @@
+node_modules/
+dist/
+dist-ssr/
+*.local
+.vite/
+coverage/
+*.log
+.DS_Store
+Thumbs.db
+.eslintcache
