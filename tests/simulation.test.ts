@@ -17,9 +17,11 @@ describe('simulation harness', () => {
   for (let c = 0; c < chunks; c++) {
     const from = START + c * CHUNK;
     const to = Math.min(START + GAMES, from + CHUNK);
-    it(`games ${from}-${to - 1} run to completion with all invariants holding`, () => {
+    it(`games ${from}-${to - 1} run to completion with all invariants holding`, async () => {
       const failures: string[] = [];
       for (let seed = from; seed < to; seed++) {
+        // yield so the vitest worker can answer the runner's RPC between games
+        await new Promise((r) => setTimeout(r, 0));
         const players = 3 + ((seed - START) % 7);
         try {
           const s = runBotGame(seed, players, { checkInvariants: true });
