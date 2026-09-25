@@ -282,6 +282,8 @@ export type PendingDecision =
       /** for zeus: what is being cancelled */
       target?: 'philosophers' | 'trojan';
       targetPlayerId?: PlayerId;
+      /** for zeus vs philosophers: the partner whose city is coveted */
+      victimId?: PlayerId;
       description: string;
     }
   | {
@@ -404,7 +406,7 @@ export type Task =
   | { kind: 'retreatUnits'; tileId: TileId; allianceId: AllianceId; generalId: PlayerId; unitIds: UnitId[]; combatId: string | null }
   | { kind: 'attackerTakesTile'; combatId: string }
   | { kind: 'trojanWindow'; combatId: string; remaining: PlayerId[] }
-  | { kind: 'zeusWindow'; target: 'philosophers' | 'trojan'; cardPlayerId: PlayerId; remaining: PlayerId[]; cancelled: boolean; effect: Task }
+  | { kind: 'zeusWindow'; target: 'philosophers' | 'trojan'; cardPlayerId: PlayerId; victimId?: PlayerId; remaining: PlayerId[]; cancelled: boolean; effect: Task }
   | { kind: 'applyTrojan'; combatId: string; cardPlayerId: PlayerId }
   | { kind: 'trojanEnter'; combatId: string }
   | { kind: 'trojanAssign'; combatId: string; cardPlayerId: PlayerId }

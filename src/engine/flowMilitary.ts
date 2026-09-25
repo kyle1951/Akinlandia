@@ -409,6 +409,7 @@ function taskCasualties(state: GameState, task: Extract<Task, { kind: 'casualtie
   const side = c[task.side];
   const alive = side.soldierIds.filter((id) => state.units[id]);
   if (side.hitsTaken === 0 || alive.length === 0) {
+    if (alive.length > 0) log(state, 'combat', `${task.side === 'attacker' ? 'Attacker' : 'Defender'} casualties: none.`, { combatId: c.id, side: task.side });
     popTask(state);
     return;
   }
@@ -624,6 +625,7 @@ export function taskZeusWindow(state: GameState, task: Extract<Task, { kind: 'ze
     holdsCard: !!findCard(state, pid, 'zeus'),
     target: task.target,
     targetPlayerId: task.cardPlayerId,
+    victimId: task.victimId,
     combatId: task.effect.kind === 'applyTrojan' ? task.effect.combatId : undefined,
     description: `${label(state, task.cardPlayerId)} has played ${what}. Hurl the Lightning Bolt of Zeus to cancel it?`,
   };

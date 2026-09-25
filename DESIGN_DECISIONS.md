@@ -89,7 +89,7 @@ Numbered from 41 onward. Each names the rule text it interprets.
 ### Allocation and deployment
 
 47. **Farmers must be placed when a legal tile exists** ("Any additional farmers which were allocated but cannot be legally placed are lost"): each farmer decision must place min(3, remaining farmers, legal tiles) farmers. A player cannot voluntarily discard a farmer that could be placed. If no legal tile exists the remaining farmers are lost automatically.
-48. **Farmers on sea tiles**: a farmer may never be placed on a pure sea tile (no land edge); the ship chain rule lets farmers reach coastal and island tiles only.
+48. **Farmers on sea tiles**: a farmer may never be placed on open sea (a tile with no land edge and no city); island cities count as land for this purpose, so the ship chain rule lets farmers reach coastal tiles and islands.
 49. **Manned ship** ("Ships may only move if manned"): for capture, chains and unmanned-ship loss, a ship is manned if its tile holds at least one soldier of the ship's alliance. For movement a ship needs its own soldier (one soldier per ship crossing a sea edge).
 50. **Buildings that cannot be placed** are lost silently in the engine (the raw materials were spent at allocation); the UI warns before purchase. Building placement is one decision listing (kind, city) pairs in the order chosen; a pair that is illegal at its turn in the sequence is rejected as a whole action so the player can reorder.
 51. **Players with no cities** have capacity 0, must allocate 0/0/0, still receive the free politician, and lose any ships they buy with saved raw materials because there is no legal placement.

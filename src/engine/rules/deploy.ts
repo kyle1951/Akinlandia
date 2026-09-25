@@ -7,7 +7,7 @@ import { allianceOf, citiesOf, farmersOnTile, isShipManned, neighborsOf, shipsOn
 /** Whether a tile is blocked for a farmer of `playerId` (ruling 11). */
 export function farmerTileBlocked(state: GameState, playerId: PlayerId, t: Tile): boolean {
   const alliance = allianceOf(state, playerId);
-  if (!hasLandEdge(t)) return true; // decision 48: no farmers at sea
+  if (!hasLandEdge(t) && !t.city) return true; // decision 48: no farmers on open sea (islands are fine)
   if (t.city && t.city.ownerId && t.city.ownerId !== playerId) return true; // another leader's city
   for (const u of unitsOnTile(state, t.id)) {
     if (u.kind === 'farmer') return true; // one farmer per tile (own or anyone's)

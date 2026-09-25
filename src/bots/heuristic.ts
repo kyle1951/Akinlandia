@@ -394,18 +394,13 @@ function chooseReaction(state: GameState, pending: Extract<PendingDecision, { ki
     case 'trojanHorse':
       return true;
     case 'zeus': {
-      if (pending.target === 'philosophers') return pending.targetPlayerId !== pid && isPhilosopherTarget(state, pid);
+      if (pending.target === 'philosophers') return pending.victimId === pid;
       // trojan: cancel when it hurts my alliance (I defend the city)
       const c = pending.combatId ? state.turnData.combats[pending.combatId] : null;
       if (!c) return false;
       return allianceOf(state, pid) === c.defender.allianceId;
     }
   }
-}
-
-function isPhilosopherTarget(state: GameState, pid: PlayerId): boolean {
-  // the zeus window for philosophers prompts the target first; if we are asked at all and hold cities, cancel
-  return cityCount(state, pid) >= 2;
 }
 
 function choosePlay(state: GameState, pid: PlayerId, hand: string[], rng: RngState): string[] {

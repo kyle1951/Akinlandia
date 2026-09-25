@@ -93,11 +93,11 @@ function taskPoliticsPlay(state: GameState, task: Extract<Task, { kind: 'politic
   pushFront(state, { kind: 'politicsReveal', round: task.round });
 }
 
-function actionPlayCards(state: GameState, action: Extract<Action, { kind: 'playCards' }>, pending: Extract<PendingDecision, { kind: 'playCards' }>): void {
+function actionPlayCards(state: GameState, action: Extract<Action, { kind: 'playCards' }>, _pending: Extract<PendingDecision, { kind: 'playCards' }>): void {
   require(action.cardUids.length >= 1, 'You must play at least one card');
   require(new Set(action.cardUids).size === action.cardUids.length, 'Each card may be played once');
-  for (const uid of action.cardUids) require(pending.hand.includes(uid), `You do not hold card ${uid}`);
   const hand = state.players[action.playerId].hand;
+  for (const uid of action.cardUids) require(hand.includes(uid), `You do not hold card ${uid}`);
   for (const uid of action.cardUids) hand.splice(hand.indexOf(uid), 1);
   state.turnData.politics!.played[action.playerId] = [...action.cardUids];
   log(state, 'politics', `${label(state, action.playerId)} seals ${action.cardUids.length} card(s) in the PLAY envelope.`);
@@ -186,6 +186,7 @@ function actionPhilosophersTarget(state: GameState, action: Extract<Action, { ki
     cardPlayerId: action.playerId,
     remaining: reactionCandidates(state, others, 'zeus', false),
     cancelled: false,
+    victimId: action.partnerId,
     effect: { kind: 'philosophersRoll', cardPlayerId: action.playerId, partnerId: action.partnerId, cityTileId: action.cityTileId },
   });
 }
