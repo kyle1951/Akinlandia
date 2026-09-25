@@ -163,20 +163,8 @@ export function GameScreen({ ctl }: { ctl: Controller }) {
           {isGameOver(game) && <button className="primary" onClick={() => setShowEnd(true)}>Final scores</button>}
         </div>
         {banner && <div className="banner">{banner.text}</div>}
-        {pending && humanTurn && !needsPrivacy && !reveal && !ctl.running && <DecisionPanel game={game} pending={pending} dispatch={ctl.dispatch} setBoard={setBoard} />}
-        {pending && !humanTurn && !isGameOver(game) && (
-          <div className="decision" style={{ maxWidth: 360 }}>
-            <PlayerSwatch game={game} pid={pending.playerId} />
-            {game.players[pending.playerId].leaderName} (bot) is deciding: {pending.kind}
-            {ctl.speed === 'paused' && !ctl.running && (
-              <div className="actions">
-                <button onClick={() => ctl.setSpeed('fast')}>Resume bots</button>
-              </div>
-            )}
-          </div>
-        )}
         {ctl.error && (
-          <div className="decision" style={{ left: 'auto', right: 12, bottom: 'auto', top: 60, borderColor: 'var(--crimson)' }}>
+          <div className="decision floating" style={{ borderColor: 'var(--crimson)' }}>
             <b>Illegal:</b> {ctl.error}
             <div className="actions">
               <button className="small" onClick={ctl.clearError}>
@@ -187,6 +175,18 @@ export function GameScreen({ ctl }: { ctl: Controller }) {
         )}
       </div>
       <div className="side">
+        {pending && humanTurn && !needsPrivacy && !reveal && !ctl.running && <DecisionPanel game={game} pending={pending} dispatch={ctl.dispatch} setBoard={setBoard} />}
+        {pending && !humanTurn && !isGameOver(game) && (
+          <div className="decision">
+            <PlayerSwatch game={game} pid={pending.playerId} />
+            {game.players[pending.playerId].leaderName} (bot) is deciding: {pending.kind}
+            {ctl.speed === 'paused' && !ctl.running && (
+              <div className="actions">
+                <button onClick={() => ctl.setSpeed('fast')}>Resume bots</button>
+              </div>
+            )}
+          </div>
+        )}
         <StatusPanel game={game} />
         <PlayersPanel game={game} />
         <LogPanel log={game.log} />

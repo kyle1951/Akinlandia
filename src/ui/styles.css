@@ -83,7 +83,7 @@ select {
 
 .app {
   display: grid;
-  grid-template-columns: 1fr 380px;
+  grid-template-columns: 1fr 470px;
   grid-template-rows: 100vh;
   height: 100vh;
   overflow: hidden;
@@ -235,7 +235,7 @@ select {
 }
 
 .log {
-  height: 260px;
+  height: 220px;
   overflow-y: auto;
   font-size: 12px;
   line-height: 1.35;
@@ -264,18 +264,19 @@ select {
 }
 
 .decision {
+  background: var(--panel);
+  border: 2px solid #b8860b;
+  border-radius: 8px;
+  padding: 10px 12px;
+  box-shadow: var(--shadow);
+  font-size: 13px;
+  flex: 0 0 auto;
+}
+.decision.floating {
   position: absolute;
   left: 12px;
   bottom: 12px;
-  max-width: 560px;
-  max-height: 70vh;
-  overflow-y: auto;
-  background: var(--panel);
-  border: 2px solid #8b7550;
-  border-radius: 8px;
-  padding: 12px 14px;
-  box-shadow: var(--shadow);
-  font-size: 14px;
+  max-width: 420px;
 }
 .decision h2 {
   font-size: 18px;
