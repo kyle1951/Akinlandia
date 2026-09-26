@@ -59,7 +59,7 @@ export function StatusPanel({ game }: { game: GameState }) {
   );
 }
 
-export function PlayersPanel({ game }: { game: GameState }) {
+export function PlayersPanel({ game, viewerId, hostIsYou, onDelegate }: { game: GameState; viewerId?: string | null; hostIsYou?: boolean; onDelegate?: (playerId: string, bot: boolean) => void }) {
   return (
     <div className="panel">
       <h3>Leaders</h3>
@@ -86,7 +86,15 @@ export function PlayersPanel({ game }: { game: GameState }) {
                   <PlayerSwatch game={game} pid={pid} />
                   {p.leaderName}
                   {p.isBot ? ' (bot)' : ''}
-                  <div style={{ fontSize: 10, color: '#5b4a3a' }}>{f ? `${allianceName(f.allianceId)} ${f.name}` : 'choosing a role'}</div>
+                  {pid === viewerId ? ' (you)' : ''}
+                  <div style={{ fontSize: 10, color: '#5b4a3a' }}>
+                    {f ? `${allianceName(f.allianceId)} ${f.name}` : 'choosing a role'}
+                    {onDelegate && (pid === viewerId || hostIsYou) && (
+                      <button className="small" style={{ marginLeft: 6, fontSize: 10 }} onClick={() => onDelegate(pid, !p.isBot)} title={p.isBot ? 'Take this seat back from the bot' : 'Let a bot play this seat while away'}>
+                        {p.isBot ? 'take over' : 'let a bot play'}
+                      </button>
+                    )}
+                  </div>
                 </td>
                 <td>{cityCount(game, pid)}</td>
                 <td>{capacityOf(game, pid)}</td>

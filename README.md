@@ -22,6 +22,8 @@ Open the URL Vite prints (normally http://localhost:5173). Other commands:
 | `npm run lint`      | ESLint                                                     |
 | `npm test`          | every unit test plus the 200-game simulation and replay tests |
 | `npm run sim`       | only the 200-game all-bot simulation                      |
+| `npm run dev:online`| build the app and run the online server locally on http://localhost:8787 |
+| `npm run deploy`    | build the app and deploy it (with the online server) to Cloudflare |
 
 `SIM_GAMES=20 npm run sim` runs a shorter simulation; `npx vite-node scripts/debug.ts <seed>` replays a
 failing seed and prints the state around the failing action.
@@ -39,6 +41,29 @@ failing seed and prints the state around the failing action.
    decision is public and appears in the panel on the right; the board highlights legal targets in gold.
 4. **Saving.** The game autosaves to the browser after every action and offers to resume on reload. "Export
    save" downloads the state as JSON and "Import save" loads one.
+
+## Playing online with friends
+
+The same game can be played from different cities, each leader on their own screen. The board, panels,
+allocation sheet and cards work exactly as in hotseat play; the "pass the device" screens disappear because
+private decisions only ever appear on their owner's screen.
+
+- **Hosting.** The online server is a Cloudflare Worker with one Durable Object per table. It runs the same
+  rules engine as the browser, validates every action, plays the bots, and keeps each table in its own
+  SQLite store, so a game can be left for days and resumed from the same link. The free plan is more than
+  enough: a whole game is a few thousand requests against a 100,000-per-day allowance.
+- **Deploy once.** `npx wrangler login` (opens the Cloudflare sign-in page in your browser), then
+  `npm run deploy`. Wrangler prints the address, something like `https://akinlandia.<your-account>.workers.dev`.
+- **Play.** Open the address, choose "Play online at a shared table", open a table, and send the link (or the
+  six-character code) to your friends. Each person claims a seat with their name and silly leader name;
+  seats nobody claims are played by bots. The host sets the map and starts the game. The tab title changes to
+  "YOUR TURN" when a decision is yours, and any player can hand their seat to a bot from the leaders panel
+  while they are away and take it back later.
+- **What the server tells each player.** Only what the tabletop would: your own cards, everyone's hand
+  sizes, the board, the log, and the pending decision when it is yours. Reaction windows do not reveal who
+  is being asked, so holding a Rage of Achilles or a Lightning Bolt stays secret.
+- **Local testing.** `npm run dev:online` serves the built app and the server from a local Cloudflare
+  emulator; open two browser windows on http://localhost:8787 to play both sides of a table.
 
 ## Rules in brief
 

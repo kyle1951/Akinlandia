@@ -20,6 +20,8 @@ npm test           # unit tests + replay + 200-game simulation (takes a few minu
 npm run sim        # simulation only; SIM_GAMES=20 for a quick run, SIM_START=<seed> to shift seeds
 npx vite-node scripts/debug.ts <seed> [tileId]   # replay a failing simulation seed and dump context
 npx vite-node scripts/batch.ts <games> <startSeed> # run bot games and print coverage counters
+npm run dev:online # vite build + wrangler dev (online tables on http://localhost:8787)
+npm run deploy     # vite build + wrangler deploy (needs `npx wrangler login` once)
 ```
 
 ## Architecture
@@ -50,6 +52,17 @@ npx vite-node scripts/batch.ts <games> <startSeed> # run bot games and print cov
   export/import), `GameScreen` (layout, banners, reveal modal, privacy gating, end screen), `Board` (SVG
   hex map with pan/zoom and highlight callbacks), `DecisionPanel` (one component per decision kind),
   `SidePanel`, `SetupScreen`, `RulesPanel` (renders `docs/rules.md`), `EndScreen`.
+- **Online play.** `src/engine/view.ts` builds the redacted per-player `ClientView` (other hands, deck,
+  RNG, action log, task queue and other players' pending decisions removed). `server/roomLogic.ts` is the
+  pure room state machine (lobby, claims, start, actions, delegation; rebuilds state by replaying the
+  persisted rows) and is unit-tested; `server/room.ts` is the Durable Object (SQLite tables `meta` and
+  `log`, hibernatable WebSockets); `server/worker.ts` routes `/api/rooms*` and serves `dist/` as static
+  assets; `server/protocol.ts` holds the message types. In the browser, `src/ui/online/` has the lobby,
+  the home screen (`#online`, `#room=CODE` in the URL hash) and `useRemoteSession`, which produces a
+  `Controller` whose `dispatch` sends actions over the socket, so `GameScreen` is shared by both modes
+  (`ctl.online` switches off privacy screens, bot controls and save import). `wrangler.jsonc` is the
+  Cloudflare config; `server/tsconfig.json` typechecks the server with workers types (the root tsconfig
+  uses DOM types, so the two are kept separate).
 
 ## Conventions
 

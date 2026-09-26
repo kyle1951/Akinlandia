@@ -23,6 +23,16 @@ export interface Controller {
   importJson: (text: string) => string | null;
   error: string | null;
   clearError: () => void;
+  /** present when the game is played at an online table */
+  online?: {
+    code: string;
+    viewerId: string | null;
+    waitingOn: { playerId?: string; kind: string } | null;
+    connected: boolean;
+    hostIsYou: boolean;
+    setDelegate: (playerId: string, bot: boolean) => void;
+    leave: () => void;
+  };
 }
 
 function loadSaved(): GameState | null {

@@ -11,7 +11,7 @@ interface Seat {
   isBot: boolean;
 }
 
-export function SetupScreen(props: { onStart: (config: GameConfig, seed: number) => void; onImport: (text: string) => string | null; hasSave: boolean; onResume: () => void }) {
+export function SetupScreen(props: { onStart: (config: GameConfig, seed: number) => void; onImport: (text: string) => string | null; hasSave: boolean; onResume: () => void; onOnline?: () => void }) {
   const [count, setCount] = useState(5);
   const [seats, setSeats] = useState<Seat[]>(() => DEFAULT_NAMES.map((n, i) => ({ name: n, leaderName: `${n} ${EPITHETS[i]}`, isBot: i > 0 })));
   const [mode, setMode] = useState<'quick' | 'full'>('quick');
@@ -47,6 +47,12 @@ export function SetupScreen(props: { onStart: (config: GameConfig, seed: number)
       <p>
         "If one plant, sow, build, or possesse a convenient Seat, others may probably be expected to come prepared with forces united, to dispossesse, and deprive him." Gather your factions, choose your alliance, and strive for renown, or at least avoid being mocked down to the latest generation.
       </p>
+      {props.onOnline && (
+        <div className="panel" style={{ marginBottom: 12 }}>
+          Friends in other cities? <button className="primary" onClick={props.onOnline}>Play online at a shared table</button>
+          <span style={{ fontSize: 12, marginLeft: 8 }}>Everything below is for hotseat play on this one device.</span>
+        </div>
+      )}
       {props.hasSave && (
         <div className="panel" style={{ marginBottom: 12 }}>
           A game in progress was found in this browser. <button className="primary" onClick={props.onResume}>Resume it</button>

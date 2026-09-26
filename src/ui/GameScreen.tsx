@@ -24,10 +24,11 @@ export function GameScreen({ ctl }: { ctl: Controller }) {
   const bannerTimer = useRef<number | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
+  const online = ctl.online;
   const pending = game.pending;
-  const decisionKey = pending ? `${game.actionLog.length}:${pending.playerId}:${pending.kind}` : null;
-  const humanTurn = !!pending && !game.players[pending.playerId].isBot;
-  const needsPrivacy = humanTurn && pending && isPrivateDecision(pending) && unlocked !== decisionKey && !reveal;
+  const decisionKey = pending ? `${game.log.length}:${pending.playerId}:${pending.kind}` : null;
+  const humanTurn = online ? !!pending && pending.playerId === online.viewerId : !!pending && !game.players[pending.playerId].isBot;
+  const needsPrivacy = !online && humanTurn && pending && isPrivateDecision(pending) && unlocked !== decisionKey && !reveal;
 
   // Banners for FINAL ORDERs and battles; reveal modal for politics.
   useEffect(() => {
@@ -38,7 +39,7 @@ export function GameScreen({ ctl }: { ctl: Controller }) {
       if (bannerTimer.current) window.clearTimeout(bannerTimer.current);
       bannerTimer.current = window.setTimeout(() => setBanner(null), order.category === 'order' ? 3500 : 2200);
     }
-    if (ev.some((e) => e.data?.reveal) && !ctl.running && ctl.speed !== 'instant') setReveal(ev.filter((e) => e.data?.reveal || e.category === 'election' || e.category === 'card'));
+    if (ev.some((e) => e.data?.reveal) && !ctl.running && ctl.speed !== 'instant' && !ev.some((e) => e.data?.winnerId)) setReveal(ev.filter((e) => e.data?.reveal || e.category === 'election' || e.category === 'card'));
   }, [ctl.events, ctl.speed, ctl.running]);
 
   // The reveal closes by itself unless a human is about to act (they dismiss it when ready).
@@ -57,6 +58,15 @@ export function GameScreen({ ctl }: { ctl: Controller }) {
   }, [game]);
 
   const allBots = game.seatOrder.every((p) => game.players[p].isBot);
+
+  // Online: make it obvious in the tab bar when it is your turn.
+  useEffect(() => {
+    if (!online) return;
+    document.title = humanTurn ? 'YOUR TURN · Akinlandia' : 'Akinlandia';
+    return () => {
+      document.title = 'Akinlandia';
+    };
+  }, [online, humanTurn]);
 
   const exportSave = () => {
     const blob = new Blob([ctl.exportJson()], { type: 'application/json' });
@@ -122,11 +132,11 @@ export function GameScreen({ ctl }: { ctl: Controller }) {
         <Board game={game} highlights={board.highlights} onTileClick={board.onTileClick} showCoords={showCoords} />
         <div className="topbar">
           <div className="status">
-            <b>Akinlandia</b> · seed {game.rng.seed} · {game.config.setupMode === 'quick' ? 'Quick Start' : 'Full Game'}
+            <b>Akinlandia</b> · {online ? `table ${online.code} · ${online.connected ? 'connected' : 'reconnecting...'}` : `seed ${game.rng.seed}`} · {game.config.setupMode === 'quick' ? 'Quick Start' : 'Full Game'}
           </div>
           <button onClick={() => setRules(true)}>Rules</button>
           <button onClick={exportSave}>Export save</button>
-          <button onClick={() => fileRef.current?.click()}>Import save</button>
+          {!online && <button onClick={() => fileRef.current?.click()}>Import save</button>}
           <input
             ref={fileRef}
             type="file"
@@ -141,16 +151,18 @@ export function GameScreen({ ctl }: { ctl: Controller }) {
               e.target.value = '';
             }}
           />
-          <label className="status">
-            Bots:{' '}
-            <select value={ctl.speed} onChange={(e) => ctl.setSpeed(e.target.value as Controller['speed'])} disabled={ctl.running}>
-              <option value="paused">paused</option>
-              <option value="slow">slow</option>
-              <option value="fast">fast</option>
-              <option value="instant">instant</option>
-            </select>
-          </label>
-          {!isGameOver(game) && !ctl.running && (
+          {!online && (
+            <label className="status">
+              Bots:{' '}
+              <select value={ctl.speed} onChange={(e) => ctl.setSpeed(e.target.value as Controller['speed'])} disabled={ctl.running}>
+                <option value="paused">paused</option>
+                <option value="slow">slow</option>
+                <option value="fast">fast</option>
+                <option value="instant">instant</option>
+              </select>
+            </label>
+          )}
+          {!online && !isGameOver(game) && !ctl.running && (
             <button onClick={ctl.runToEnd} title={allBots ? 'Run the whole game' : 'Run until a human must decide'}>
               {allBots ? 'Run to end' : 'Run bots'}
             </button>
@@ -163,14 +175,18 @@ export function GameScreen({ ctl }: { ctl: Controller }) {
           <label className="status">
             <input type="checkbox" checked={showCoords} onChange={(e) => setShowCoords(e.target.checked)} /> coords
           </label>
-          <button
-            className="danger"
-            onClick={() => {
-              if (confirm('Abandon this game? The autosave will be cleared.')) ctl.quit();
-            }}
-          >
-            Quit
-          </button>
+          {online ? (
+            <button onClick={online.leave}>Leave the table</button>
+          ) : (
+            <button
+              className="danger"
+              onClick={() => {
+                if (confirm('Abandon this game? The autosave will be cleared.')) ctl.quit();
+              }}
+            >
+              Quit
+            </button>
+          )}
           {isGameOver(game) && <button className="primary" onClick={() => setShowEnd(true)}>Final scores</button>}
         </div>
         {banner && <div className="banner">{banner.text}</div>}
@@ -187,7 +203,7 @@ export function GameScreen({ ctl }: { ctl: Controller }) {
       </div>
       <div className="side">
         {pending && humanTurn && !needsPrivacy && !reveal && !ctl.running && <DecisionPanel game={game} pending={pending} dispatch={ctl.dispatch} setBoard={setBoard} />}
-        {pending && !humanTurn && !isGameOver(game) && (
+        {!online && pending && !humanTurn && !isGameOver(game) && (
           <div className="decision">
             <PlayerSwatch game={game} pid={pending.playerId} />
             {game.players[pending.playerId].leaderName} (bot) is deciding: {pending.kind}
@@ -198,14 +214,27 @@ export function GameScreen({ ctl }: { ctl: Controller }) {
             )}
           </div>
         )}
+        {online && !humanTurn && !isGameOver(game) && online.waitingOn && (
+          <div className="decision">
+            {online.waitingOn.playerId ? (
+              <>
+                <PlayerSwatch game={game} pid={online.waitingOn.playerId} />
+                Waiting for {game.players[online.waitingOn.playerId].leaderName}
+                {game.players[online.waitingOn.playerId].isBot ? ' (bot)' : ''}: {online.waitingOn.kind}
+              </>
+            ) : (
+              'A leader is weighing a reaction card...'
+            )}
+          </div>
+        )}
         <StatusPanel game={game} />
-        <PlayersPanel game={game} />
+        <PlayersPanel game={game} viewerId={online?.viewerId} hostIsYou={online?.hostIsYou} onDelegate={online?.setDelegate} />
         <LogPanel log={game.log} />
       </div>
       {needsPrivacy && pending && <PrivacyScreen name={game.players[pending.playerId].leaderName} what={privateWhat(pending)} onContinue={() => setUnlocked(decisionKey)} />}
       {rules && <RulesPanel onClose={() => setRules(false)} />}
       {revealView}
-      {isGameOver(game) && showEnd && game.result && <EndScreen game={game} onNewGame={ctl.quit} onClose={() => setShowEnd(false)} />}
+      {isGameOver(game) && showEnd && game.result && <EndScreen game={game} onNewGame={online ? online.leave : ctl.quit} onClose={() => setShowEnd(false)} />}
     </div>
   );
 }

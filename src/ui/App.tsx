@@ -2,8 +2,15 @@ import { useState } from 'react';
 import { useGameController, SAVE_KEY } from './useGameController';
 import { SetupScreen } from './SetupScreen';
 import { GameScreen } from './GameScreen';
+import { OnlineHome, OnlineRoom, useOnlineRoute } from './online/OnlineApp';
 
 export function App() {
+  const route = useOnlineRoute();
+  if (route.online) return route.code ? <OnlineRoom key={route.code} code={route.code} onLeave={route.leave} /> : <OnlineHome onBack={route.leave} />;
+  return <HotseatApp />;
+}
+
+function HotseatApp() {
   const ctl = useGameController();
   const [showSetup, setShowSetup] = useState(false);
   if (!ctl.game || showSetup) {
@@ -20,6 +27,9 @@ export function App() {
         onStart={(config, seed) => {
           ctl.start(config, seed);
           setShowSetup(false);
+        }}
+        onOnline={() => {
+          location.hash = 'online';
         }}
       />
     );
