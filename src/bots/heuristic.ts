@@ -185,16 +185,16 @@ function chooseAllocation(state: GameState, pid: PlayerId, rng: RngState): Alloc
     // keep a few farmers on raw materials to save for city levels
     farmers = Math.min(cap, rawTiles, Math.max(farmers, Math.ceil(cap * 0.4)));
     const rest = cap - farmers;
-    // soldiers only when they can be fed next turn
-    const affordable = Math.max(0, p.food + Math.min(farmers, wheatTiles) - soldiers);
+    // soldiers cost 1 food and 1 raw each now (house rules) and must be fed next turn
+    const affordable = Math.max(0, Math.min(p.food, p.raw, p.food + 2 * Math.min(farmers, wheatTiles) - soldiers));
     let newSoldiers = Math.min(rest, affordable, Math.ceil(rest * 0.7));
-    if (nextFloat(rng) < 0.2) newSoldiers = Math.min(rest, newSoldiers + 1);
+    if (nextFloat(rng) < 0.2) newSoldiers = Math.min(rest, affordable, newSoldiers + 1);
     a.farmers = farmers;
     a.soldiers = newSoldiers;
     a.politicians = rest - newSoldiers;
   }
-  // raw materials: save for city levels, then L3 improvements, walls, ships
-  let raw = p.raw;
+  // raw materials: soldiers first, then save for city levels, L3 improvements, walls, ships
+  let raw = p.raw - a.soldiers;
   const cities = citiesOf(state, pid);
   const upgradable = cities.filter((t) => t.city!.level < 3).length;
   while (raw >= 7 && a.levelUps < upgradable) {

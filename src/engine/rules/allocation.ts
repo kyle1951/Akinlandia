@@ -8,6 +8,7 @@ export interface AllocationCheck {
   capacity: number;
   capacityUsed: number;
   rawCost: number;
+  foodCost: number;
 }
 
 export function emptyAllocation(): Allocation {
@@ -15,7 +16,12 @@ export function emptyAllocation(): Allocation {
 }
 
 export function rawCostOf(a: Allocation): number {
-  return a.ships * COSTS.ship + a.levelUps * COSTS.levelUp + a.temples * COSTS.temple + a.universities * COSTS.university + a.walls * COSTS.walls;
+  return a.soldiers * COSTS.soldierRaw + a.ships * COSTS.ship + a.levelUps * COSTS.levelUp + a.temples * COSTS.temple + a.universities * COSTS.university + a.walls * COSTS.walls;
+}
+
+/** House rule (decision 99): each new soldier also costs food at allocation. */
+export function foodCostOf(a: Allocation): number {
+  return a.soldiers * COSTS.soldierFood;
 }
 
 /**
@@ -36,7 +42,9 @@ export function checkAllocation(state: GameState, playerId: PlayerId, a: Allocat
   const capacityUsed = a.farmers + a.soldiers + a.politicians;
   if (capacityUsed !== capacity) errors.push(`Productive capacity must be spent in full: ${capacityUsed} of ${capacity} allocated`);
   const rawCost = rawCostOf(a);
-  if (rawCost > p.raw) errors.push(`Raw materials: purchases cost ${rawCost} but only ${p.raw} in stock`);
+  if (rawCost > p.raw) errors.push(`Raw materials: purchases cost ${rawCost} (soldiers ${a.soldiers * COSTS.soldierRaw}, ships and buildings ${rawCost - a.soldiers * COSTS.soldierRaw}) but only ${p.raw} in stock`);
+  const foodCost = foodCostOf(a);
+  if (foodCost > p.food) errors.push(`Food: raising ${a.soldiers} soldier(s) costs ${foodCost} food but only ${p.food} in stock`);
 
   // Placement warnings (decision 50): count what could legally be placed.
   const cities = Object.values(state.tiles).filter((t) => t.city && t.city.ownerId === playerId);
@@ -54,5 +62,5 @@ export function checkAllocation(state: GameState, playerId: PlayerId, a: Allocat
   if (a.temples > Math.min(templeRoom, l3Possible)) warnings.push('Temples require a Level 3 city (max one per city); some would be lost.');
   if (a.universities > Math.min(uniRoom, l3Possible)) warnings.push('Universities require a Level 3 city (max one per city); some would be lost.');
 
-  return { ok: errors.length === 0, errors, warnings, capacity, capacityUsed, rawCost };
+  return { ok: errors.length === 0, errors, warnings, capacity, capacityUsed, rawCost, foodCost };
 }

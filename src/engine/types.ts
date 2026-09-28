@@ -74,6 +74,8 @@ export interface Unit {
   tileId: TileId;
   moved: boolean; // has moved this sub-phase
   spent: boolean; // retreated this sub-phase; no combat value
+  /** turn the unit was raised; a soldier is not fed in the turn it is raised (decision 100) */
+  bornTurn?: number;
 }
 
 // ---------------------------------------------------------------------------

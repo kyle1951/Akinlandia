@@ -6,7 +6,9 @@ import { CARD_BY_TYPE } from '../data/cards';
 
 export const CITY_CAPACITY: Record<number, number> = { 1: 3, 2: 5, 3: 6 };
 export const CITY_POINTS: Record<number, number> = { 1: 3, 2: 5, 3: 6 };
-export const COSTS = { ship: 1, levelUp: 7, temple: 3, university: 3, walls: 2 } as const;
+export const COSTS = { ship: 1, levelUp: 7, temple: 3, university: 3, walls: 2, soldierRaw: 1, soldierFood: 1 } as const;
+/** House rule (decision 98): a farmer on wheat harvests 2 food. */
+export const FOOD_PER_WHEAT = 2;
 export const GENERAL_BONUS = 2;
 export const END_GAME_TOTAL = 35;
 
@@ -197,6 +199,11 @@ export function soldierCount(state: GameState, playerId: PlayerId): number {
   let n = 0;
   for (const u of Object.values(state.units)) if (u.ownerId === playerId && u.kind === 'soldier') n++;
   return n;
+}
+
+/** Soldiers that must be fed this turn: those not raised this turn (decision 100). */
+export function soldiersToFeed(state: GameState, playerId: PlayerId): Unit[] {
+  return Object.values(state.units).filter((u) => u.ownerId === playerId && u.kind === 'soldier' && u.bornTurn !== state.turn);
 }
 
 export function playerLabel(state: GameState, playerId: PlayerId): string {

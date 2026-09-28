@@ -106,7 +106,7 @@ describe('deployment flow', () => {
     const s = newGame(6, 3);
     const seen: { pid: string; count: number }[] = [];
     runBots(s, {
-      until: (st) => st.pending?.kind === 'placeBuildings' || st.pending?.kind === 'placeShips' || st.pending?.kind === 'placeSoldiers' || st.phase === 'military',
+      until: (st) => st.turn > 1 || (st.phase !== 'setup' && st.phase !== 'allocation' && st.phase !== 'deployment'),
       onAction: () => {},
     });
     // replay the farmer decisions by scanning the action log with pending reconstructed is complex; instead re-run and record
@@ -114,7 +114,7 @@ describe('deployment flow', () => {
     runBots(s2, {
       until: (st) => {
         if (st.pending?.kind === 'placeFarmers') seen.push({ pid: st.pending.playerId, count: st.pending.count });
-        return st.pending?.kind === 'placeBuildings' || st.pending?.kind === 'placeShips' || st.pending?.kind === 'placeSoldiers' || st.phase === 'military';
+        return st.turn > 1 || (st.phase !== 'setup' && st.phase !== 'allocation' && st.phase !== 'deployment');
       },
     });
     expect(seen.length).toBeGreaterThan(3);

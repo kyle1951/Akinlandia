@@ -5,7 +5,7 @@ import { rollD6, nextInt } from './rng';
 import { RAW_MATERIALS } from './types';
 import type { Action, AllianceId, GameState, PendingDecision, PlayerId, ScoreLine, Task } from './types';
 import { cardName, discardFromHand, drawCard, label, log, popTask, pushFront, reactionCandidates, removeUnit, require, sinkUnmannedShipsAtSea, tLabel } from './core';
-import { END_GAME_TOTAL, allianceName, allianceOf, cityCount, citiesOf, membersOf, soldierCount, tile, unitsOfPlayer } from './query';
+import { END_GAME_TOTAL, FOOD_PER_WHEAT, allianceName, allianceOf, cityCount, citiesOf, membersOf, soldiersToFeed, tile } from './query';
 import { sequentialOrder } from './rules/turnOrder';
 import { electGeneral, playedValue } from './rules/politics';
 import { compareScoreLines, computeScores, rankScoreLines, tiedAtTop } from './rules/scoring';
@@ -24,7 +24,7 @@ function taskReconcile(state: GameState): void {
   for (const u of Object.values(state.units)) {
     if (u.kind !== 'farmer') continue;
     const t = tile(state, u.tileId);
-    if (t.resources.includes('wheat')) gained[u.ownerId].food += 1;
+    if (t.resources.includes('wheat')) gained[u.ownerId].food += FOOD_PER_WHEAT;
     if (t.resources.some((r) => RAW_MATERIALS.includes(r))) gained[u.ownerId].raw += 1;
     removeUnit(state, u.id); // ruling 12 / decision 66
   }
@@ -41,17 +41,15 @@ function taskFeeding(state: GameState, task: Extract<Task, { kind: 'feeding' }>)
   while (task.idx < task.order.length) {
     const pid = task.order[task.idx];
     const p = state.players[pid];
-    const soldiers = soldierCount(state, pid);
+    const toFeed = soldiersToFeed(state, pid);
+    const soldiers = toFeed.length;
     if (soldiers <= p.food) {
       p.food -= soldiers;
       if (soldiers > 0) log(state, 'reconcile', `${label(state, pid)} feeds ${soldiers} soldier(s); ${p.food} food remain.`);
       task.idx += 1;
       continue;
     }
-    const candidates = unitsOfPlayer(state, pid)
-      .filter((u) => u.kind === 'soldier')
-      .map((u) => u.id)
-      .sort();
+    const candidates = toFeed.map((u) => u.id).sort();
     state.pending = { kind: 'disband', playerId: pid, shortfall: soldiers - p.food, candidates };
     return;
   }

@@ -70,7 +70,8 @@ private decisions only ever appear on their owner's screen.
 Each **turn** has three phases.
 
 - **Allocation and deployment.** Every leader privately spends the full productive capacity of their cities
-  (L1 = 3, L2 = 5, L3 = 6) on farmers, soldiers and politicians (1 each) and may spend saved raw materials
+  (L1 = 3, L2 = 5, L3 = 6) on farmers, soldiers and politicians (1 each; a new soldier also costs 1 food and
+  1 raw material, a house rule) and may spend saved raw materials
   on ships (1), city level improvements (7), Temples and Universities (3 each, Level 3 cities only) and
   Walls (2). Each General then fixes the order of play inside their alliance. Farmers (three at a time),
   buildings, ships, soldiers and politician cards are deployed in turn, alliances interleaving. Farmers go
@@ -83,8 +84,9 @@ Each **turn** has three phases.
   soldier, +1 more in a city and +1 more behind Walls; every 6 is a hit. Higher score wins the tile; ties
   and mutual annihilation favour the defender. Losing defenders retreat and are spent for the sub-phase.
   Unmanned ships are captured by whoever walks in.
-- **Reconciliation and politics.** Farmers harvest 1 food from wheat and 1 raw material from any wood,
-  stone or iron marker, then leave the board. Every soldier eats 1 food or is disbanded. Then each leader
+- **Reconciliation and politics.** Farmers harvest 2 food from wheat (house rule) and 1 raw material from any
+  wood, stone or iron marker, then leave the board. Every soldier raised in an earlier turn eats 1 food or is
+  disbanded. Then each leader
   secretly fills a PLAY envelope with at least one card; the envelopes are revealed together and the highest
   total in each alliance becomes General. Apple of Discord forces a replay, Attacked by Philosophers steals
   a partner's city on an even roll (or your hand on an odd one), Rage of Achilles lets you refuse your

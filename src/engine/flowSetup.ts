@@ -159,6 +159,7 @@ function actionAllocate(state: GameState, action: Extract<Action, { kind: 'alloc
   const a = { ...action.allocation };
   const p = state.players[action.playerId];
   p.raw -= check.rawCost;
+  p.food -= check.foodCost;
   state.turnData.allocations[action.playerId] = a;
   state.turnData.toDeploy[action.playerId] = {
     farmers: a.farmers,
@@ -343,7 +344,7 @@ function placeCounted(state: GameState, kind: 'ship' | 'soldier', playerId: Play
   require(sum === total, `You must place all ${total} ${kind}(s) at once (got ${sum})`);
   const parts: string[] = [];
   for (const [id, n] of Object.entries(counts)) {
-    for (let i = 0; i < n; i++) createUnit(state, kind, playerId, id);
+    for (let i = 0; i < n; i++) createUnit(state, kind, playerId, id, kind === 'soldier' ? { bornTurn: state.turn } : {});
     if (n > 0) parts.push(`${n} in ${tLabel(state, id)}`);
   }
   log(state, 'deploy', `${label(state, playerId)} places ${kind}s: ${parts.join(', ') || 'none'}.`);

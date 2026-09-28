@@ -203,7 +203,7 @@ function Allocate({ game, pending, dispatch }: P<'allocate'>) {
         </div>
         <div className="row">
           <span>
-            SOLDIERS <span className="circles">{circles(a.soldiers, Math.min(pending.capacity, 12))}</span>
+            SOLDIERS <span className="circles">{circles(a.soldiers, Math.min(pending.capacity, 12))}</span> +1 food +1 raw each
           </span>
           <Counter value={a.soldiers} onChange={set('soldiers')} max={a.soldiers + remaining} />
         </div>
@@ -235,6 +235,7 @@ function Allocate({ game, pending, dispatch }: P<'allocate'>) {
         </div>
         <div className="row">
           <span>Capacity used: {check.capacityUsed} / {check.capacity}</span>
+          <span>Food cost: {check.foodCost} / {pending.food}</span>
           <span>Raw cost: {check.rawCost} / {pending.raw}</span>
         </div>
       </div>

@@ -31,6 +31,7 @@ export function clearUnits(state: GameState): void {
 export function addUnit(state: GameState, kind: UnitKind, ownerId: PlayerId, tileId: string, opts: Partial<Unit> = {}): Unit {
   const id = opts.id ?? `t${state.nextUnitId++}`;
   const u: Unit = { id, kind, ownerId, tileId, moved: opts.moved ?? false, spent: opts.spent ?? false };
+  if (opts.bornTurn !== undefined) u.bornTurn = opts.bornTurn;
   state.units[id] = u;
   return u;
 }

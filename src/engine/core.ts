@@ -55,6 +55,7 @@ export function require(cond: unknown, message: string): asserts cond {
 export function createUnit(state: GameState, kind: UnitKind, ownerId: PlayerId, tileId: TileId, opts: Partial<Unit> = {}): Unit {
   const id = opts.id ?? `u${state.nextUnitId++}`;
   const u: Unit = { id, kind, ownerId, tileId, moved: opts.moved ?? false, spent: opts.spent ?? false };
+  if (opts.bornTurn !== undefined) u.bornTurn = opts.bornTurn;
   state.units[id] = u;
   return u;
 }

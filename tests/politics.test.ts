@@ -36,9 +36,9 @@ describe('reconciliation', () => {
     s.players[white].raw = 0;
     advance(s);
     runUntil(s, (st) => st.phase === 'politics');
-    expect(logHas(s, 'harvests 1 food and 3 raw material(s)')).toBe(true);
+    expect(logHas(s, 'harvests 2 food and 3 raw material(s)')).toBe(true); // wheat yields 2 (house rule)
     expect(Object.values(s.units).some((u) => u.kind === 'farmer')).toBe(false);
-    expect(s.players[white].food).toBe(0); // 1 harvested, 1 eaten
+    expect(s.players[white].food).toBe(1); // 2 harvested, 1 eaten
     expect(s.players[white].raw).toBe(3);
   });
 
@@ -51,14 +51,17 @@ describe('reconciliation', () => {
     const a = addUnit(s, 'soldier', white, '3,0');
     const b = addUnit(s, 'soldier', white, '3,0');
     const c = addUnit(s, 'soldier', white, '5,-1');
+    const fresh = addUnit(s, 'soldier', white, '5,-1', { bornTurn: s.turn }); // raised this turn: not fed (house rule)
     s.players[white].food = 1;
     advance(s);
     runUntil(s, (st) => st.pending?.kind === 'disband');
     expect(s.pending).toMatchObject({ kind: 'disband', playerId: white, shortfall: 2 });
+    expect((s.pending as { candidates: string[] }).candidates).not.toContain(fresh.id);
     act(s, { kind: 'disband', playerId: white, unitId: c.id });
     expect(s.pending).toMatchObject({ kind: 'disband', shortfall: 1 });
     act(s, { kind: 'disband', playerId: white, unitId: a.id });
     expect(s.units[b.id]).toBeDefined();
+    expect(s.units[fresh.id]).toBeDefined();
     expect(s.players[white].food).toBe(0);
     expect(s.pending?.kind).not.toBe('disband');
   });
