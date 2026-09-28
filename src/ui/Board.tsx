@@ -185,7 +185,12 @@ function TileView({ tile, game, units, highlight, onClick, showCoords }: { tile:
 }
 
 function Resources({ tile, cx, cy }: { tile: Tile; cx: number; cy: number }) {
-  const items = tile.resources;
+  // Raw materials are interchangeable in the base game, so wood, stone and iron all show as one green tree.
+  const items: ('wheat' | 'raw' | 'fish')[] = [];
+  for (const r of tile.resources) {
+    if (r === 'wheat' || r === 'fish') items.push(r);
+    else if (!items.includes('raw')) items.push('raw');
+  }
   if (items.length === 0) return null;
   const spots = [
     { x: -14, y: -20 },
@@ -202,26 +207,12 @@ function Resources({ tile, cx, cy }: { tile: Tile; cx: number; cy: number }) {
         switch (r) {
           case 'wheat':
             return <ellipse key={i} cx={x} cy={y} rx={8} ry={5} fill="#f2d33b" stroke="#a88d13" strokeWidth={1} />;
-          case 'wood':
+          case 'raw':
             return (
               <g key={i}>
-                <polygon points={`${x},${y - 8} ${x - 6},${y + 3} ${x + 6},${y + 3}`} fill="#7a4b1e" stroke="#4a2c10" strokeWidth={0.8} />
-                <rect x={x - 1.5} y={y + 3} width={3} height={4} fill="#4a2c10" />
-              </g>
-            );
-          case 'stone':
-            return (
-              <g key={i} fill="#8f8f8f" stroke="#4d4d4d" strokeWidth={0.6}>
-                <circle cx={x - 4} cy={y} r={2.6} />
-                <circle cx={x + 3} cy={y - 2} r={2.6} />
-                <circle cx={x + 1} cy={y + 4} r={2.6} />
-              </g>
-            );
-          case 'iron':
-            return (
-              <g key={i} stroke="#e8781e" strokeWidth={2.2} strokeLinecap="round">
-                <line x1={x - 5} y1={y + 6} x2={x + 3} y2={y - 4} />
-                <path d={`M ${x - 3} ${y - 6} Q ${x + 3} ${y - 8} ${x + 8} ${y - 2}`} fill="none" />
+                <polygon points={`${x},${y - 9} ${x - 6},${y + 1} ${x + 6},${y + 1}`} fill="#2f7d32" stroke="#1b4d1e" strokeWidth={0.8} />
+                <polygon points={`${x},${y - 4} ${x - 7},${y + 5} ${x + 7},${y + 5}`} fill="#3a9a3e" stroke="#1b4d1e" strokeWidth={0.8} />
+                <rect x={x - 1.5} y={y + 5} width={3} height={4} fill="#5a3a1a" />
               </g>
             );
           case 'fish':
