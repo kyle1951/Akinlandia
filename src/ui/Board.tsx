@@ -162,6 +162,15 @@ function TileView({ tile, game, units, highlight, onClick, showCoords }: { tile:
         const p2 = inset(corners[b], 0.08);
         return <line key={`m${d}`} className="mountain" x1={p1.x} y1={p1.y} x2={p2.x} y2={p2.y} />;
       })}
+      {type === 'sea' && tile.city && (
+        <path
+          className="islet"
+          d={`M ${c.x - 22} ${c.y - 4} c 4 -14 18 -20 30 -14 c 10 5 16 14 12 24 c -4 10 -16 12 -26 10 c -12 -3 -20 -10 -16 -20 z`}
+          fill="var(--land)"
+          stroke="#c8895a"
+          strokeWidth={2}
+        />
+      )}
       <Resources tile={tile} cx={c.x} cy={c.y} />
       {tile.city && <CityView tile={tile} game={game} cx={c.x} cy={c.y} />}
       <Units units={units} game={game} cx={c.x} cy={c.y + (tile.city ? 10 : 4)} />
