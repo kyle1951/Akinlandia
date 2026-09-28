@@ -28,7 +28,7 @@ const WEDGE: TileSpec[] = [
   // ring 3: coast (edges derived: sea toward the inner sea, land otherwise)
   { q: 3, r: -3, base: 'auto', resources: ['wood', 'fish'] },
   { q: 3, r: -2, base: 'auto', city: { name: 'coast-second', slot: 'second' }, resources: ['wheat'] },
-  { q: 3, r: -1, base: 'auto', resources: ['wheat', 'fish'] },
+  { q: 3, r: -1, base: 'auto', resources: ['wheat', 'wood', 'fish'] },
   { q: 3, r: 0, base: 'auto', city: { name: 'coast-purple', slot: 'purple' } },
   { q: 2, r: 1, base: 'auto', resources: ['wheat', 'stone'] },
   { q: 1, r: 2, base: 'auto', city: { name: 'coast-third', slot: 'third' }, resources: ['fish'] },
