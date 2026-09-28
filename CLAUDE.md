@@ -43,7 +43,9 @@ npm run deploy     # vite build + wrangler deploy (needs `npx wrangler login` on
     candidates); `map.ts` builds tiles from a compact spec and validates edge consistency; `hex.ts` axial
     coordinates (flat-top; direction i is edge i; the neighbour sees edge (i+3)%6); `rng.ts` mulberry32
     stored in the state; `invariants.ts` the checks the simulation runs after every action.
-- `src/data/` is data only: `quickstartMap.ts` (one 30-tile wedge rotated three times), `tileBag.ts`
+- `src/data/` is data only: `quickstartMap.ts` (one 30-tile wedge rotated three times, plus the `MAPS`
+  registry), `tableMap.ts` (the photographed board, one row per tile with its sea edges as a 6-letter
+  string; see DESIGN_DECISIONS 95-97), `tileBag.ts`
   (Full Game tiles), `cards.ts` (the Appendix deck table), `factions.ts`.
 - `src/bots/heuristic.ts` answers every `PendingDecision` kind; `runner.ts` runs bot games, replays action
   logs and is the harness the tests and the UI's "run to end" use. Bot randomness derives from

@@ -12,6 +12,7 @@ import { viewForPlayer } from '../src/engine/view';
 import type { ClientView } from '../src/engine/view';
 import { runBots } from '../src/bots/runner';
 import { MAX_SEATS, MIN_SEATS } from './protocol';
+import { MAPS } from '../src/data/quickstartMap';
 import type { ClientMessage, LobbyInfo, LobbySeat, ServerMessage } from './protocol';
 
 export interface SeatRecord {
@@ -27,6 +28,7 @@ export interface RoomRecord {
   status: 'lobby' | 'playing';
   seats: SeatRecord[];
   setupMode: SetupMode;
+  mapId: string;
   alwaysPromptReactions: boolean;
   seedText: string;
   config: GameConfig | null;
@@ -44,7 +46,7 @@ export function defaultSeats(n: number): SeatRecord[] {
 }
 
 export function newRoomRecord(code: string, now = Date.now()): RoomRecord {
-  return { code, hostToken: null, status: 'lobby', seats: defaultSeats(5), setupMode: 'quick', alwaysPromptReactions: false, seedText: '', config: null, seed: null, createdAt: now };
+  return { code, hostToken: null, status: 'lobby', seats: defaultSeats(5), setupMode: 'quick', mapId: 'quickstart', alwaysPromptReactions: false, seedText: '', config: null, seed: null, createdAt: now };
 }
 
 export interface HandleResult {
@@ -103,6 +105,7 @@ export class Room {
       status: this.record.status,
       seats,
       setupMode: this.record.setupMode,
+      mapId: this.record.mapId ?? 'quickstart',
       alwaysPromptReactions: this.record.alwaysPromptReactions,
       hostIsYou: !!token && this.record.hostToken === token,
       mySeat: mySeat >= 0 ? mySeat : null,
@@ -185,6 +188,7 @@ export class Room {
     });
     this.record.seats = seats;
     this.record.setupMode = msg.setupMode === 'full' ? 'full' : 'quick';
+    this.record.mapId = msg.mapId && MAPS[msg.mapId] ? msg.mapId : 'quickstart';
     this.record.alwaysPromptReactions = !!msg.alwaysPromptReactions;
     this.record.seedText = (msg.seed ?? '').slice(0, 64);
     return { rows: [], recordChanged: true };
@@ -201,7 +205,7 @@ export class Room {
       seats: this.record.seats.map((s) => ({ name: s.name, leaderName: s.leaderName, isBot: s.isBot || !s.token })),
       setupMode: this.record.setupMode,
       alwaysPromptReactions: this.record.alwaysPromptReactions,
-      mapId: 'quickstart',
+      mapId: this.record.mapId ?? 'quickstart',
     };
     this.record.config = config;
     this.record.seed = seed;

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { ClientMessage, LobbyInfo } from '../../../server/protocol';
+import { MAPS } from '../../data/quickstartMap';
 
 const NAME_KEY = 'akinlandia.player.name';
 const LEADER_KEY = 'akinlandia.player.leader';
@@ -17,12 +18,14 @@ export function Lobby({ lobby, send, connected, error, clearError, onLeave }: { 
   const [leader, setLeader] = useState(() => remembered(LEADER_KEY, ''));
   const [seats, setSeats] = useState(lobby.seats.map((s) => ({ name: s.name, leaderName: s.leaderName, isBot: s.isBot })));
   const [mode, setMode] = useState(lobby.setupMode);
+  const [mapId, setMapId] = useState(lobby.mapId ?? 'quickstart');
   const [alwaysPrompt, setAlwaysPrompt] = useState(lobby.alwaysPromptReactions);
   const [seed, setSeed] = useState('');
   const [copied, setCopied] = useState(false);
   useEffect(() => {
     setSeats(lobby.seats.map((s) => ({ name: s.name, leaderName: s.leaderName, isBot: s.isBot })));
     setMode(lobby.setupMode);
+    setMapId(lobby.mapId ?? 'quickstart');
     setAlwaysPrompt(lobby.alwaysPromptReactions);
   }, [lobby]);
 
@@ -39,7 +42,7 @@ export function Lobby({ lobby, send, connected, error, clearError, onLeave }: { 
     send({ type: 'claim', seat, name: n, leaderName: l });
   };
   const configure = (next: typeof seats, m = mode, a = alwaysPrompt, s = seed) => {
-    send({ type: 'configure', seats: next, setupMode: m, alwaysPromptReactions: a, seed: s });
+    send({ type: 'configure', seats: next, setupMode: m, alwaysPromptReactions: a, seed: s, mapId });
   };
   const setCount = (n: number) => {
     const next = [...seats];
@@ -139,7 +142,14 @@ export function Lobby({ lobby, send, connected, error, clearError, onLeave }: { 
             </tbody>
           </table>
           <label>
-            <input type="radio" checked={mode === 'quick'} onChange={() => setMode('quick')} /> Quick Start map
+            <input type="radio" checked={mode === 'quick'} onChange={() => setMode('quick')} /> Quick Start map:{' '}
+            <select value={mapId} onChange={(e) => setMapId(e.target.value)}>
+              {Object.entries(MAPS).map(([id, m]) => (
+                <option key={id} value={id}>
+                  {m.spec.name}
+                </option>
+              ))}
+            </select>
           </label>
           <label>
             <input type="radio" checked={mode === 'full'} onChange={() => setMode('full')} /> Full Game (build the board first)

@@ -1,5 +1,6 @@
 import { symmetricMap } from '../engine/map';
 import type { MapSpec, MountainSpec, TileSpec } from '../engine/map';
+import { TABLE_MAP, TABLE_SLOTS } from './tableMap';
 
 /**
  * The Quick Start map (ruling 4, decision 43).
@@ -120,6 +121,7 @@ export const QUICK_START_SLOTS: Record<string, string> = {
   'green-third': 'green-teal',
 };
 
-export const MAPS: Record<string, { spec: MapSpec; slots: Record<string, string> }> = {
-  quickstart: { spec: QUICK_START_MAP, slots: QUICK_START_SLOTS },
+export const MAPS: Record<string, { spec: MapSpec; slots: Record<string, string>; description: string }> = {
+  quickstart: { spec: QUICK_START_MAP, slots: QUICK_START_SLOTS, description: 'The Akinlandian Sea: a symmetric 91-hex board designed for the digital game.' },
+  table2026: { spec: TABLE_MAP, slots: TABLE_SLOTS, description: 'The Table of 2026: the hand-painted board from the last live game, reconstructed from photographs.' },
 };

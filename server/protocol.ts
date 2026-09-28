@@ -18,6 +18,7 @@ export interface LobbyInfo {
   status: 'lobby' | 'playing';
   seats: LobbySeat[];
   setupMode: SetupMode;
+  mapId: string;
   alwaysPromptReactions: boolean;
   hostIsYou: boolean;
   mySeat: number | null;
@@ -27,7 +28,7 @@ export interface LobbyInfo {
 export type ClientMessage =
   | { type: 'claim'; seat: number; name: string; leaderName: string }
   | { type: 'release' }
-  | { type: 'configure'; seats: { name: string; leaderName: string; isBot: boolean }[]; setupMode: SetupMode; alwaysPromptReactions: boolean; seed?: string }
+  | { type: 'configure'; seats: { name: string; leaderName: string; isBot: boolean }[]; setupMode: SetupMode; alwaysPromptReactions: boolean; seed?: string; mapId?: string }
   | { type: 'start' }
   | { type: 'action'; action: Action }
   | { type: 'delegate'; playerId: string; bot: boolean }
