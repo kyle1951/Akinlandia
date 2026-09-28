@@ -111,6 +111,15 @@ const ROWS: Row[] = [
   [-1, 5, 'LLLLLL', 'w'],
   [0, 5, 'LLLLLL', '', 'Iconium'],
   [1, 5, 'LLLLLL'],
+  // gaps the lattice missed inside the board, filled as open sea (decision 102)
+  [1, 1, 'SSSSSS'],
+  [2, 1, 'SSSSSS'],
+  [2, -3, 'SSSSSS'],
+  [4, -3, 'SSSSSS'],
+  [6, -2, 'SSSSSS'],
+  [7, -3, 'SSSSSS'],
+  [9, 0, 'SSSSSS'],
+  [-2, 2, 'SSSSSS'],
 ];
 
 /** Faction slots: three homelands read off the board (decision 97). */

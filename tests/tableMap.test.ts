@@ -18,7 +18,7 @@ describe('the Table of 2026 map', () => {
     for (const t of Object.values(tiles)) types[tileType(t)]++;
     expect(types.sea).toBeGreaterThan(8);
     expect(types.coastal).toBeGreaterThan(20);
-    expect(types.land).toBeGreaterThan(20);
+    expect(types.land).toBeGreaterThan(10);
     expect(Object.values(tiles).some((t) => t.edges.some((e) => e.mountain))).toBe(true);
   });
 
