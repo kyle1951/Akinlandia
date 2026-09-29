@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import type { GameState, LogEntry, PlayerId } from '../engine/types';
-import { END_GAME_TOTAL, allianceName, capacityOf, cityCount, isGeneral, scoreOf } from '../engine/query';
+import { END_GAME_TOTAL, FOOD_CAP_PER_UPGRADE, allianceName, capacityOf, cityCount, foodCapOf, isGeneral, scoreOf } from '../engine/query';
 import { subPhaseName } from '../engine/flowMilitary';
 import { ALLIANCE_COLORS } from '../data/factions';
 
@@ -57,7 +57,7 @@ export function StatusPanel({ game }: { game: GameState }) {
       </div>
       {(game.config.foodCapPerCity || game.config.handLimit) ? (
         <div style={{ marginTop: 4, fontSize: 12 }}>
-          House rules: {[game.config.foodCapPerCity ? `food spoils above ${game.config.foodCapPerCity} per city held` : '', game.config.handLimit ? `hand limit ${game.config.handLimit} cards` : ''].filter(Boolean).join('; ')}.
+          House rules: {[game.config.foodCapPerCity ? `food spoils above ${game.config.foodCapPerCity} per city held, +${FOOD_CAP_PER_UPGRADE} per city upgrade` : '', game.config.handLimit ? `hand limit ${game.config.handLimit} cards` : ''].filter(Boolean).join('; ')}.
         </div>
       ) : null}
     </div>
@@ -103,9 +103,9 @@ export function PlayersPanel({ game, viewerId, hostIsYou, onDelegate }: { game: 
                 </td>
                 <td>{cityCount(game, pid)}</td>
                 <td>{capacityOf(game, pid)}</td>
-                <td title={game.config.foodCapPerCity ? `stores at most ${game.config.foodCapPerCity * cityCount(game, pid)}` : undefined}>
+                <td title={foodCapOf(game, pid) !== null ? `stores at most ${foodCapOf(game, pid)}` : undefined}>
                   {p.food}
-                  {game.config.foodCapPerCity ? <span style={{ fontSize: 10, color: 'var(--ink-soft)' }}>/{game.config.foodCapPerCity * cityCount(game, pid)}</span> : null}
+                  {foodCapOf(game, pid) !== null ? <span style={{ fontSize: 10, color: 'var(--ink-soft)' }}>/{foodCapOf(game, pid)}</span> : null}
                 </td>
                 <td>{p.raw}</td>
                 <td>{p.hand.length}</td>

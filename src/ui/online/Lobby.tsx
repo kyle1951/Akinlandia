@@ -176,7 +176,7 @@ export function Lobby({ lobby, send, connected, error, clearError, onLeave }: { 
       {!lobby.hostIsYou && (
         <p style={{ fontStyle: 'italic' }}>
           Waiting for the host to begin the game.
-          {lobby.foodCapPerCity ? ` Food spoils above ${lobby.foodCapPerCity} per city held.` : ''}
+          {lobby.foodCapPerCity ? ` Food spoils above ${lobby.foodCapPerCity} per city held, +2 per city upgrade.` : ''}
           {lobby.handLimit ? ` Hand limit ${lobby.handLimit} cards.` : ''}
         </p>
       )}

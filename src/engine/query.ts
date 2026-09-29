@@ -85,6 +85,18 @@ export function citiesOf(state: GameState, playerId: PlayerId): Tile[] {
   return Object.values(state.tiles).filter((t) => t.city && t.city.ownerId === playerId);
 }
 
+/** House rule (decision 107): extra food a city stores for each level it has been upgraded above 1. */
+export const FOOD_CAP_PER_UPGRADE = 2;
+
+/** Most food a leader may keep after feeding under the food-cap house rule, or null when the rule is off. */
+export function foodCapOf(state: GameState, playerId: PlayerId): number | null {
+  const perCity = state.config.foodCapPerCity ?? 0;
+  if (perCity <= 0) return null;
+  let cap = 0;
+  for (const t of citiesOf(state, playerId)) cap += perCity + FOOD_CAP_PER_UPGRADE * (t.city!.level - 1);
+  return cap;
+}
+
 export function cityCount(state: GameState, playerId: PlayerId): number {
   let n = 0;
   for (const t of Object.values(state.tiles)) if (t.city && t.city.ownerId === playerId) n++;

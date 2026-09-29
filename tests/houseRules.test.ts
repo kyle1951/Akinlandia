@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cityCount } from '../src/engine/query';
+import { cityCount, citiesOf, foodCapOf } from '../src/engine/query';
 import { applyAction, advance } from '../src/engine/machine';
 import { runBotGame } from '../src/bots/runner';
 import { act, addUnit, clearUnits, giveCard, logHas, newGame, playerOf, runUntil } from './helpers';
@@ -23,6 +23,23 @@ describe('house rule: food spoils above a cap per city (decision 107)', () => {
     runUntil(s, (st) => st.phase === 'politics');
     expect(s.players[white].food).toBe(2 * cityCount(s, white));
     expect(logHas(s, 'food spoils')).toBe(true);
+  });
+
+  it('adds 2 to the cap for each level a city has been upgraded', () => {
+    const s = newGame(3, 1, { foodCapPerCity: 4 });
+    const white = playerOf(s, 'white');
+    runUntil(s, (st) => st.phase === 'military' && st.pending?.kind === 'issueOrder');
+    const [a, b] = citiesOf(s, white);
+    a.city!.level = 2;
+    b.city!.level = 3;
+    const cities = cityCount(s, white);
+    expect(foodCapOf(s, white)).toBe(4 * cities + 2 + 4);
+    clearUnits(s);
+    jumpToReconcile(s);
+    s.players[white].food = 50;
+    advance(s);
+    runUntil(s, (st) => st.phase === 'politics');
+    expect(s.players[white].food).toBe(4 * cities + 6);
   });
 
   it('leaves food alone when the rule is off', () => {

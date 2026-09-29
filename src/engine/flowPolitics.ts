@@ -5,7 +5,7 @@ import { rollD6, nextInt } from './rng';
 import { RAW_MATERIALS } from './types';
 import type { Action, AllianceId, GameState, PendingDecision, PlayerId, ScoreLine, Task } from './types';
 import { cardName, discardFromHand, drawCard, label, log, popTask, pushFront, reactionCandidates, removeUnit, require, sinkUnmannedShipsAtSea, tLabel } from './core';
-import { END_GAME_TOTAL, FOOD_PER_WHEAT, allianceName, allianceOf, cityCount, citiesOf, membersOf, soldiersToFeed, tile } from './query';
+import { END_GAME_TOTAL, FOOD_PER_WHEAT, allianceName, allianceOf, cityCount, citiesOf, foodCapOf, membersOf, soldiersToFeed, tile } from './query';
 import { sequentialOrder } from './rules/turnOrder';
 import { electGeneral, playedValue } from './rules/politics';
 import { compareScoreLines, computeScores, rankScoreLines, tiedAtTop } from './rules/scoring';
@@ -57,15 +57,14 @@ function taskFeeding(state: GameState, task: Extract<Task, { kind: 'feeding' }>)
   spoilFood(state);
 }
 
-/** House rule (decision 107): food stored beyond the cap for the cities a leader holds spoils once the army is fed. */
+/** House rule (decision 107): food stored beyond what a leader's cities can hold spoils once the army is fed. */
 function spoilFood(state: GameState): void {
-  const perCity = state.config.foodCapPerCity ?? 0;
-  if (perCity <= 0) return;
   for (const pid of state.seatOrder) {
     const p = state.players[pid];
-    const cap = perCity * cityCount(state, pid);
-    if (p.food > cap) {
-      log(state, 'reconcile', `${p.food - cap} of ${label(state, pid)}'s food spoils in the granaries; ${cityCount(state, pid)} cit${cityCount(state, pid) === 1 ? 'y stores' : 'ies store'} at most ${cap}.`);
+    const cap = foodCapOf(state, pid);
+    if (cap !== null && p.food > cap) {
+      const n = cityCount(state, pid);
+      log(state, 'reconcile', `${p.food - cap} of ${label(state, pid)}'s food spoils in the granaries; ${n} cit${n === 1 ? 'y stores' : 'ies store'} at most ${cap}.`);
       p.food = cap;
     }
   }
