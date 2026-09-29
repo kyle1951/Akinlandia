@@ -34,7 +34,7 @@ function landReach(tiles: Record<string, Tile>, start: string): Set<string> {
 }
 
 describe('starting slots are equitable', () => {
-  for (const mapId of ['table2026']) {
+  for (const mapId of ['table2026', 'eurasia']) {
     it(`${mapId}: every faction has room of its own`, () => {
       const tiles = buildTiles(MAPS[mapId].spec, {});
       const bySlot: Record<string, Tile[]> = {};

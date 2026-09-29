@@ -31,8 +31,8 @@ failing seed and prints the state around the failing action.
 ## How to play
 
 1. **Setup screen.** Choose 3 to 9 seats, name each leader (and give them a silly leader name for the order
-   announcements), and mark each seat human or bot. Pick Quick Start (preset map) or Full Game (build the
-   map tile by tile), optionally turn on "Always prompt every eligible player" at reaction windows, and set a
+   announcements), and mark each seat human or bot. Pick Quick Start (a preset map: the designed board, the
+   photographed Table of 2026, or Eurasia) or Full Game (build the map tile by tile), optionally turn on "Always prompt every eligible player" at reaction windows, and set a
    seed if you want a reproducible game. An all-bot game can be watched at any speed or run to the end.
 2. **Roles.** In a random order each leader picks an alliance (White, Black, Green) and a faction. Purple, the
    royal faction, must be taken first in each alliance and starts as that alliance's General.
