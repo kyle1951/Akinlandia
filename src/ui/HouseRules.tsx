@@ -5,7 +5,7 @@ export interface HouseRuleSettings {
 }
 
 export const NO_HOUSE_RULES: HouseRuleSettings = { foodCapPerCity: 0, handLimit: 0 };
-const DEFAULT_FOOD_CAP = 3;
+const DEFAULT_FOOD_CAP = 4;
 const DEFAULT_HAND_LIMIT = 7;
 
 export function HouseRuleOptions({ value, onChange }: { value: HouseRuleSettings; onChange: (v: HouseRuleSettings) => void }) {

@@ -109,7 +109,7 @@ export function SetupScreen(props: { onStart: (config: GameConfig, seed: number)
           <button className="small" onClick={() => setSeats((s) => s.map((x) => ({ ...x, isBot: false })))}>All humans</button>
         </p>
       </div>
-      <div className="panel" style={{ marginTop: 12 }}>
+      <div className="panel config" style={{ marginTop: 12 }}>
         <h3>Configuration</h3>
         <label>
           <input type="radio" checked={mode === 'quick'} onChange={() => setMode('quick')} /> Quick Start: a preset map, two cities per faction.

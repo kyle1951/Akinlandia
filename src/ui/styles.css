@@ -470,6 +470,10 @@ select {
   padding: 4px 6px;
   text-align: left;
 }
+.setup .config > label {
+  display: block;
+  margin: 8px 0;
+}
 .setup .quote {
   font-style: italic;
   color: var(--ink-soft);

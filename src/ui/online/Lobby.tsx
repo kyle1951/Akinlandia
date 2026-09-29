@@ -118,7 +118,7 @@ export function Lobby({ lobby, send, connected, error, clearError, onLeave }: { 
         </table>
       </div>
       {lobby.hostIsYou && (
-        <div className="panel" style={{ marginTop: 12 }}>
+        <div className="panel config" style={{ marginTop: 12 }}>
           <h3>Host controls</h3>
           <label>
             Number of leaders (3 to 9):{' '}
