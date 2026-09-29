@@ -147,6 +147,31 @@ describe('casualties, retreats and captures', () => {
     expect(unitsAt(s, '4,0').length).toBe(3);
   });
 
+  it('leaves behind soldiers whose only escape is by sea once the ships are full (decision 105)', () => {
+    const { s, white, black, g } = setup();
+    const bg = s.alliances.black.generalId!;
+    // black holds the coastal tile (3,0) with 3 soldiers and 2 ships; every land neighbour is white
+    const d = [addUnit(s, 'soldier', black, '3,0'), addUnit(s, 'soldier', black, '3,0'), addUnit(s, 'soldier', black, '3,0')];
+    addUnit(s, 'ship', black, '3,0');
+    addUnit(s, 'ship', black, '3,0');
+    const a = [addUnit(s, 'soldier', white, '4,0'), addUnit(s, 'soldier', white, '4,0'), addUnit(s, 'soldier', white, '4,0'), addUnit(s, 'soldier', white, '4,0')];
+    for (const t of ['4,-1', '3,1', '3,-1', '2,1']) addUnit(s, 'soldier', white, t);
+    setActing(s, 'white');
+    setRolls(s, [5, 5, 5, 5, 1, 1, 1]);
+    order(s, g, '4,0', [{ dest: '3,0', units: a.map((u) => u.id) }]);
+    expect(s.pending?.kind).toBe('retreat');
+    const r = s.pending as Extract<NonNullable<typeof s.pending>, { kind: 'retreat' }>;
+    expect(r.shipsAvailable).toBe(2);
+    expect(r.units.every((u) => u.destinations.every((x) => x.byShip))).toBe(true);
+    const sea = r.units[0].destinations[0].tileId;
+    expect(() => act(s, { kind: 'retreat', playerId: bg, moves: d.map((u) => ({ unitId: u.id, tileId: sea })) })).toThrow(/Only 2 ship/);
+    expect(() => act(s, { kind: 'retreat', playerId: bg, moves: [{ unitId: d[0].id, tileId: sea }] })).toThrow(/Every available ship/);
+    act(s, { kind: 'retreat', playerId: bg, moves: [{ unitId: d[0].id, tileId: sea }, { unitId: d[1].id, tileId: sea }] });
+    expect(s.units[d[2].id]).toBeUndefined();
+    expect(s.units[d[0].id].tileId).toBe(sea);
+    expect(logHas(s, 'No ship is left')).toBe(true);
+  });
+
   it('destroys survivors with no line of retreat', () => {
     const { s, white, black, g } = setup();
     const a = [addUnit(s, 'soldier', white, '3,0'), addUnit(s, 'soldier', white, '3,0')];

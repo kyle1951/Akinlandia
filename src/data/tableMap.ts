@@ -19,18 +19,18 @@ type Row = [q: number, r: number, sea: string, features?: string, city?: string]
 const ROWS: Row[] = [
   // top-right arm
   [10, -6, 'SSLLLS', 'w', 'Astyra'],
-  [11, -6, 'SSSLLS', '', 'Zeleia'],
+  [11, -6, 'SSSLLS'],
   [6, -5, 'LLLLSS', 'w'],
-  [7, -5, 'SLLLLS', 's', 'Tenedos'],
+  [7, -5, 'SLLLLS', 'sw', 'Tenedos'],
   [8, -5, 'SSSLLS', 'wi'],
   [9, -5, 'SSSLLL', 'w', 'Lampsacus'],
   [10, -5, 'LLLLSL', 'ws'],
   [4, -4, 'SSSSSS'],
   [5, -4, 'LSSSSL', 'wi'],
   [6, -4, 'SLLLLS', 'w', 'Abydos'],
-  [7, -4, 'SLLSSS', 'w', 'Sestos'],
+  [7, -4, 'SLLSSS', 'w'],
   [8, -4, 'SSLLLL', 'w', 'Cyzicus'],
-  [9, -4, 'SSLLSS', '', 'Priapus'],
+  [9, -4, 'SSLLSS', 't'],
   [10, -4, 'LLSSSS'],
   [11, -4, 'SSLLSS', 't'],
   [0, -3, 'LLLLLS', 'w', 'Byzantion'],
@@ -44,7 +44,7 @@ const ROWS: Row[] = [
   [11, -3, 'LLLLLL', '', 'Cius'],
   [-1, -2, 'SLLLLL', 'wt'],
   [0, -2, 'SLLSSS', 'f'],
-  [1, -2, 'SLLLSS', 'w'],
+  [1, -2, 'SLLLSS', 'wt', 'Rhaedestus'],
   [2, -2, 'SSSSSS'],
   [3, -2, 'SSSSSS', 'f'],
   [4, -2, 'SLSSLS', 'w'],
@@ -53,7 +53,7 @@ const ROWS: Row[] = [
   [8, -2, 'SLLLLL', 'wt'],
   [9, -2, 'LLSSSL', 'w'],
   [10, -2, 'LLLLLL', 'w', 'Nicaea'],
-  [-1, -1, 'SSLLLL', 'w m4'],
+  [-1, -1, 'SSLLLL', 'w m4', 'Aenus'],
   [0, -1, 'SSSLSS'],
   [1, -1, 'SSSSSS'],
   [2, -1, 'LSSSLL', 'w'],
@@ -61,7 +61,7 @@ const ROWS: Row[] = [
   [4, -1, 'LLLLSL', 'w', 'Chalcedon'],
   [5, -1, 'LLLLLL', 'w', 'Nicomedia'],
   [6, -1, 'LLSSSL', 'i'],
-  [7, -1, 'LSLLSL', 'w'],
+  [7, -1, 'LSLLSL', 'wt'],
   [8, -1, 'LLLLLL', 'w', 'Prusa'],
   [9, -1, 'LLLLLL', 'w'],
   [10, -1, 'LLLLLL', 's', 'Apamea'],
@@ -83,7 +83,7 @@ const ROWS: Row[] = [
   [6, 1, 'LSSSSL'],
   [7, 1, 'LLLSLS', 'w', 'Amastris'],
   [8, 1, 'LLLLLL', '', 'Sinope'],
-  [-3, 2, 'LLLLLL', 'wt'],
+  [-3, 2, 'LLLLLL', 'wt', 'Doriscus'],
   [-1, 2, 'LLLLLL', 'm4 m5'],
   [0, 2, 'LSLLLL', 'w m4'],
   [1, 2, 'LSSLLL', 'w'],
@@ -122,26 +122,29 @@ const ROWS: Row[] = [
   [-2, 2, 'SSSSSS'],
 ];
 
-/** Faction slots: three homelands read off the board (decision 97). */
+/** Faction slots: one homeland per alliance, factions spaced apart with fields of their own (decision 104). */
 const SLOTS: Record<string, string> = {
-  '-1,1': 'white-purple',
-  '-1,3': 'white-purple',
-  '0,-3': 'white-second',
-  '1,0': 'white-second',
-  '2,2': 'white-third',
-  '3,3': 'white-third',
-  '6,0': 'black-purple',
-  '5,0': 'black-purple',
-  '7,1': 'black-second',
-  '8,1': 'black-second',
-  '4,-1': 'black-third',
-  '5,-1': 'black-third',
-  '10,-3': 'green-purple',
-  '10,-2': 'green-purple',
-  '8,-4': 'green-second',
-  '9,-3': 'green-second',
-  '6,-4': 'green-third',
-  '7,-4': 'green-third',
+  // West: White
+  '0,-3': 'white-purple', // Byzantion
+  '-1,-1': 'white-purple', // Aenus
+  '1,0': 'white-second', // Marmara
+  '-3,2': 'white-second', // Doriscus
+  '-1,1': 'white-third', // Selymbria
+  '-1,3': 'white-third', // Pessinus
+  // Centre and south-east: Black
+  '6,0': 'black-purple', // Heraclea
+  '8,1': 'black-purple', // Sinope
+  '5,-2': 'black-second', // Perinthus
+  '4,-1': 'black-second', // Chalcedon
+  '3,3': 'black-third', // Tavium
+  '5,3': 'black-third', // Andros
+  // North-east archipelago: Green
+  '10,-6': 'green-purple', // Astyra
+  '9,-5': 'green-purple', // Lampsacus
+  '7,-5': 'green-second', // Tenedos
+  '9,-3': 'green-second', // Parium
+  '11,-3': 'green-third', // Cius
+  '10,-2': 'green-third', // Nicaea
 };
 
 function parseFeatures(f: string): { resources: TileSpec['resources']; mountains: number[] } {

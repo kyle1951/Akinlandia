@@ -20,6 +20,9 @@ npm test           # unit tests + replay + 200-game simulation (takes a few minu
 npm run sim        # simulation only; SIM_GAMES=20 for a quick run, SIM_START=<seed> to shift seeds
 npx vite-node scripts/debug.ts <seed> [tileId]   # replay a failing simulation seed and dump context
 npx vite-node scripts/batch.ts <games> <startSeed> # run bot games and print coverage counters
+npx vite-node scripts/regions.ts <mapId>     # homeland balance + proposed starting slots
+npx vite-node scripts/slotcheck.ts <mapId>   # explain a map's starting slots against the slot rules
+npx vite-node scripts/fairness.ts <mapId> [games]  # win rate and mean score by faction over bot games
 npm run dev:online # vite build + wrangler dev (online tables on http://localhost:8787)
 npm run deploy     # vite build + wrangler deploy (needs `npx wrangler login` once)
 ```

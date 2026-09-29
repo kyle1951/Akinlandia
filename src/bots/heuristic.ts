@@ -125,7 +125,8 @@ export function botAction(state: GameState, pending: PendingDecision): Action {
             const vb = (tb.city && tb.city.ownerId && allianceOf(state, tb.city.ownerId) === alliance ? 3 : 0) + (b.byShip ? -1 : 0) + (allianceSoldiersOn(state, b.tileId, alliance).length > 0 ? 1 : 0);
             return vb - va;
           });
-        const pick = ranked[0] ?? u.destinations[0];
+        const pick = ranked[0];
+        if (!pick) continue; // only escape is by sea and the ships are gone: left behind (decision 105)
         if (pick.byShip) shipsLeft--;
         moves.push({ unitId: u.unitId, tileId: pick.tileId });
       }

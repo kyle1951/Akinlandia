@@ -493,17 +493,29 @@ function actionRetreat(state: GameState, action: Extract<Action, { kind: 'retrea
   const task = state.tasks[0] as Extract<Task, { kind: 'retreatUnits' }>;
   const moves = new Map(action.moves.map((m) => [m.unitId, m.tileId]));
   let byShip = 0;
+  const stranded: string[] = [];
   for (const u of pending.units) {
     const dest = moves.get(u.unitId);
-    require(dest, `Soldier ${u.unitId} must be given a retreat destination`);
+    if (!dest) {
+      // decision 105: a soldier whose only escape is by sea may be left behind once the ships are gone
+      require(!u.destinations.some((x) => !x.byShip), `Soldier ${u.unitId} must be given a retreat destination`);
+      stranded.push(u.unitId);
+      continue;
+    }
     const d = u.destinations.find((x) => x.tileId === dest);
     require(d, `${dest} is not a legal retreat for ${u.unitId}`);
     if (d.byShip) byShip++;
   }
   require(byShip <= pending.shipsAvailable, `Only ${pending.shipsAvailable} ship(s) are available for retreat by sea`);
+  require(stranded.length === 0 || byShip === pending.shipsAvailable, 'Every available ship must carry a retreating soldier before any soldier is left behind');
   const shipPool = shipsOnTile(state, pending.tileId).filter((s) => allianceOf(state, s.ownerId) === task.allianceId);
+  for (const id of stranded) {
+    const u = removeUnit(state, id)!;
+    log(state, 'combat', `No ship is left for a soldier of ${label(state, u.ownerId)} on ${tLabel(state, pending.tileId)}; it has no line of retreat and is destroyed.`);
+  }
   for (const u of pending.units) {
-    const dest = moves.get(u.unitId)!;
+    const dest = moves.get(u.unitId);
+    if (!dest) continue;
     const d = u.destinations.find((x) => x.tileId === dest)!;
     const soldier = state.units[u.unitId];
     if (d.byShip) {

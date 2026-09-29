@@ -680,6 +680,9 @@ function Retreat({ game, pending, dispatch, setBoard }: P<'retreat'>) {
     setMoves(init);
   }, [pending]);
   const byShip = pending.units.filter((u) => u.destinations.find((d) => d.tileId === moves[u.unitId])?.byShip).length;
+  const seaOnly = (u: (typeof pending.units)[number]) => u.destinations.every((d) => d.byShip);
+  const leftBehind = pending.units.filter((u) => !moves[u.unitId]);
+  const mustFillShips = leftBehind.length > 0 && byShip < pending.shipsAvailable;
   const allDest = [...new Set(pending.units.flatMap((u) => u.destinations.map((d) => d.tileId)))];
   useBoard(setBoard, { highlights: [{ tileId: pending.tileId, kind: 'source' }, ...allDest.map((t) => ({ tileId: t, kind: 'legal' as const }))] }, [pending]);
   return (
@@ -690,6 +693,7 @@ function Retreat({ game, pending, dispatch, setBoard }: P<'retreat'>) {
         <div key={u.unitId} className="unit-row">
           <PlayerSwatch game={game} pid={game.units[u.unitId].ownerId} /> soldier of {game.players[game.units[u.unitId].ownerId].leaderName} →
           <select value={moves[u.unitId] ?? ''} onChange={(e) => setMoves((m) => ({ ...m, [u.unitId]: e.target.value }))}>
+            {seaOnly(u) && <option value="">left behind (destroyed)</option>}
             {u.destinations.map((d) => (
               <option key={d.tileId} value={d.tileId}>
                 {tileLabel(tile(game, d.tileId))}
@@ -699,9 +703,10 @@ function Retreat({ game, pending, dispatch, setBoard }: P<'retreat'>) {
           </select>
         </div>
       ))}
-      {byShip > pending.shipsAvailable && <div className="error">Only {pending.shipsAvailable} ship(s) are available.</div>}
+      {byShip > pending.shipsAvailable && <div className="error">Only {pending.shipsAvailable} ship(s) are available: leave the extra soldiers behind.</div>}
+      {mustFillShips && <div className="error">Fill every ship before leaving a soldier behind.</div>}
       <div className="actions">
-        <button className="primary" disabled={byShip > pending.shipsAvailable} onClick={() => dispatch({ kind: 'retreat', playerId: pending.playerId, moves: pending.units.map((u) => ({ unitId: u.unitId, tileId: moves[u.unitId] })) })}>
+        <button className="primary" disabled={byShip > pending.shipsAvailable || mustFillShips} onClick={() => dispatch({ kind: 'retreat', playerId: pending.playerId, moves: pending.units.filter((u) => moves[u.unitId]).map((u) => ({ unitId: u.unitId, tileId: moves[u.unitId] })) })}>
           Order the retreat
         </button>
       </div>
