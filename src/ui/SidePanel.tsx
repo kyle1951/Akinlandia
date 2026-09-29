@@ -55,6 +55,11 @@ export function StatusPanel({ game }: { game: GameState }) {
       <div style={{ marginTop: 4 }}>
         The Fates' running total: <b>{game.endTotal}</b> / {END_GAME_TOTAL} (the game ends at {END_GAME_TOTAL})
       </div>
+      {(game.config.foodCapPerCity || game.config.handLimit) ? (
+        <div style={{ marginTop: 4, fontSize: 12 }}>
+          House rules: {[game.config.foodCapPerCity ? `food spoils above ${game.config.foodCapPerCity} per city held` : '', game.config.handLimit ? `hand limit ${game.config.handLimit} cards` : ''].filter(Boolean).join('; ')}.
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -98,7 +103,10 @@ export function PlayersPanel({ game, viewerId, hostIsYou, onDelegate }: { game: 
                 </td>
                 <td>{cityCount(game, pid)}</td>
                 <td>{capacityOf(game, pid)}</td>
-                <td>{p.food}</td>
+                <td title={game.config.foodCapPerCity ? `stores at most ${game.config.foodCapPerCity * cityCount(game, pid)}` : undefined}>
+                  {p.food}
+                  {game.config.foodCapPerCity ? <span style={{ fontSize: 10, color: 'var(--ink-soft)' }}>/{game.config.foodCapPerCity * cityCount(game, pid)}</span> : null}
+                </td>
                 <td>{p.raw}</td>
                 <td>{p.hand.length}</td>
                 <td>{f ? scoreOf(game, pid) : '-'}</td>

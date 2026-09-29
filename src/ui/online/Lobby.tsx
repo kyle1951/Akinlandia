@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import type { ClientMessage, LobbyInfo } from '../../../server/protocol';
 import { MAPS } from '../../data/quickstartMap';
+import { HouseRuleOptions } from '../HouseRules';
+import type { HouseRuleSettings } from '../HouseRules';
 
 const NAME_KEY = 'akinlandia.player.name';
 const LEADER_KEY = 'akinlandia.player.leader';
@@ -20,6 +22,7 @@ export function Lobby({ lobby, send, connected, error, clearError, onLeave }: { 
   const [mode, setMode] = useState(lobby.setupMode);
   const [mapId, setMapId] = useState(lobby.mapId ?? 'quickstart');
   const [alwaysPrompt, setAlwaysPrompt] = useState(lobby.alwaysPromptReactions);
+  const [houseRules, setHouseRules] = useState<HouseRuleSettings>({ foodCapPerCity: lobby.foodCapPerCity ?? 0, handLimit: lobby.handLimit ?? 0 });
   const [seed, setSeed] = useState('');
   const [copied, setCopied] = useState(false);
   useEffect(() => {
@@ -27,6 +30,7 @@ export function Lobby({ lobby, send, connected, error, clearError, onLeave }: { 
     setMode(lobby.setupMode);
     setMapId(lobby.mapId ?? 'quickstart');
     setAlwaysPrompt(lobby.alwaysPromptReactions);
+    setHouseRules({ foodCapPerCity: lobby.foodCapPerCity ?? 0, handLimit: lobby.handLimit ?? 0 });
   }, [lobby]);
 
   const link = `${location.origin}${location.pathname}#room=${lobby.code}`;
@@ -42,7 +46,7 @@ export function Lobby({ lobby, send, connected, error, clearError, onLeave }: { 
     send({ type: 'claim', seat, name: n, leaderName: l });
   };
   const configure = (next: typeof seats, m = mode, a = alwaysPrompt, s = seed) => {
-    send({ type: 'configure', seats: next, setupMode: m, alwaysPromptReactions: a, seed: s, mapId });
+    send({ type: 'configure', seats: next, setupMode: m, alwaysPromptReactions: a, seed: s, mapId, ...houseRules });
   };
   const setCount = (n: number) => {
     const next = [...seats];
@@ -157,6 +161,7 @@ export function Lobby({ lobby, send, connected, error, clearError, onLeave }: { 
           <label>
             <input type="checkbox" checked={alwaysPrompt} onChange={(e) => setAlwaysPrompt(e.target.checked)} /> Always prompt every eligible player at reaction windows
           </label>
+          <HouseRuleOptions value={houseRules} onChange={setHouseRules} />
           <label>
             Seed (optional): <input value={seed} onChange={(e) => setSeed(e.target.value)} placeholder="random" />
           </label>
@@ -168,7 +173,13 @@ export function Lobby({ lobby, send, connected, error, clearError, onLeave }: { 
           </div>
         </div>
       )}
-      {!lobby.hostIsYou && <p style={{ fontStyle: 'italic' }}>Waiting for the host to begin the game.</p>}
+      {!lobby.hostIsYou && (
+        <p style={{ fontStyle: 'italic' }}>
+          Waiting for the host to begin the game.
+          {lobby.foodCapPerCity ? ` Food spoils above ${lobby.foodCapPerCity} per city held.` : ''}
+          {lobby.handLimit ? ` Hand limit ${lobby.handLimit} cards.` : ''}
+        </p>
+      )}
       {error && (
         <p style={{ color: 'var(--crimson)' }}>
           {error} <button className="small" onClick={clearError}>ok</button>

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { GameConfig } from '../engine/types';
 import { hashSeed } from '../engine/rng';
 import { MAPS } from '../data/quickstartMap';
+import { HouseRuleOptions, NO_HOUSE_RULES } from './HouseRules';
 
 const DEFAULT_NAMES = ['Sinclair', 'Akin', 'Hobbes', 'Herodotus', 'Clemenceau', 'Pericles', 'Xerxes', 'Leonidas', 'Solon'];
 const EPITHETS = ['the Great', 'the Adequate', 'the Unready', 'the Magnificent', 'the Verbose', 'the Bald', 'the Younger', 'the Pious', 'the Tardy'];
@@ -18,6 +19,7 @@ export function SetupScreen(props: { onStart: (config: GameConfig, seed: number)
   const [mode, setMode] = useState<'quick' | 'full'>('quick');
   const [mapId, setMapId] = useState('quickstart');
   const [alwaysPrompt, setAlwaysPrompt] = useState(false);
+  const [houseRules, setHouseRules] = useState(NO_HOUSE_RULES);
   const [seedText, setSeedText] = useState('');
   const [importError, setImportError] = useState<string | null>(null);
 
@@ -31,6 +33,7 @@ export function SetupScreen(props: { onStart: (config: GameConfig, seed: number)
         setupMode: mode,
         alwaysPromptReactions: alwaysPrompt,
         mapId,
+        ...houseRules,
       },
       seed,
     );
@@ -130,6 +133,7 @@ export function SetupScreen(props: { onStart: (config: GameConfig, seed: number)
         <label>
           <input type="checkbox" checked={alwaysPrompt} onChange={(e) => setAlwaysPrompt(e.target.checked)} /> Always prompt every eligible player at reaction windows (hides who holds Rage of Achilles, Trojan Horse or Zeus; slower).
         </label>
+        <HouseRuleOptions value={houseRules} onChange={setHouseRules} />
         <label>
           Seed (optional, any text or number): <input value={seedText} onChange={(e) => setSeedText(e.target.value)} placeholder="random" />
         </label>

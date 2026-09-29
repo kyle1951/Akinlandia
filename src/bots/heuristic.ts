@@ -151,6 +151,12 @@ export function botAction(state: GameState, pending: PendingDecision): Action {
     }
     case 'playCards':
       return { kind: 'playCards', playerId: pid, cardUids: choosePlay(state, pid, pending.hand, rng) };
+    case 'discardDown': {
+      // keep the reaction cards and the highest values; shed the cheapest
+      const keepScore = (uid: string) => CARD_BY_TYPE[state.cards[uid].type].value + (['rage', 'trojan', 'zeus'].includes(state.cards[uid].type) ? 3 : 0);
+      const ranked = [...pending.hand].sort((x, y) => keepScore(x) - keepScore(y) || (x < y ? -1 : 1));
+      return { kind: 'discardDown', playerId: pid, cardUids: ranked.slice(0, pending.count) };
+    }
     case 'invokeApple': {
       const round = state.turnData.politics!;
       const a = allianceOf(state, pid);

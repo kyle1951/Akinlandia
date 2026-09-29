@@ -20,6 +20,8 @@ export interface LobbyInfo {
   setupMode: SetupMode;
   mapId: string;
   alwaysPromptReactions: boolean;
+  foodCapPerCity: number;
+  handLimit: number;
   hostIsYou: boolean;
   mySeat: number | null;
   playersOnline: number;
@@ -28,7 +30,7 @@ export interface LobbyInfo {
 export type ClientMessage =
   | { type: 'claim'; seat: number; name: string; leaderName: string }
   | { type: 'release' }
-  | { type: 'configure'; seats: { name: string; leaderName: string; isBot: boolean }[]; setupMode: SetupMode; alwaysPromptReactions: boolean; seed?: string; mapId?: string }
+  | { type: 'configure'; seats: { name: string; leaderName: string; isBot: boolean }[]; setupMode: SetupMode; alwaysPromptReactions: boolean; seed?: string; mapId?: string; foodCapPerCity?: number; handLimit?: number }
   | { type: 'start' }
   | { type: 'action'; action: Action }
   | { type: 'delegate'; playerId: string; bot: boolean }

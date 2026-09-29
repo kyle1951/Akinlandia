@@ -54,6 +54,21 @@ function taskFeeding(state: GameState, task: Extract<Task, { kind: 'feeding' }>)
     return;
   }
   popTask(state);
+  spoilFood(state);
+}
+
+/** House rule (decision 107): food stored beyond the cap for the cities a leader holds spoils once the army is fed. */
+function spoilFood(state: GameState): void {
+  const perCity = state.config.foodCapPerCity ?? 0;
+  if (perCity <= 0) return;
+  for (const pid of state.seatOrder) {
+    const p = state.players[pid];
+    const cap = perCity * cityCount(state, pid);
+    if (p.food > cap) {
+      log(state, 'reconcile', `${p.food - cap} of ${label(state, pid)}'s food spoils in the granaries; ${cityCount(state, pid)} cit${cityCount(state, pid) === 1 ? 'y stores' : 'ies store'} at most ${cap}.`);
+      p.food = cap;
+    }
+  }
 }
 
 function actionDisband(state: GameState, action: Extract<Action, { kind: 'disband' }>, pending: Extract<PendingDecision, { kind: 'disband' }>): void {
@@ -128,7 +143,8 @@ function taskAppleWindow(state: GameState, task: Extract<Task, { kind: 'appleWin
     popTask(state);
     const round = state.turnData.politics!;
     const phils = sequentialOrder(state).filter((pid) => (round.played[pid] ?? []).some((uid) => state.cards[uid].type === 'philosophers'));
-    pushFront(state, { kind: 'philosophers', remaining: phils }, { kind: 'elect' }, { kind: 'endTurn' });
+    const limit: Task[] = state.config.handLimit ? [{ kind: 'handLimit', remaining: sequentialOrder(state) }] : [];
+    pushFront(state, { kind: 'philosophers', remaining: phils }, { kind: 'elect' }, ...limit, { kind: 'endTurn' });
     return;
   }
   state.pending = { kind: 'invokeApple', playerId: task.remaining[0] };
@@ -222,6 +238,30 @@ function taskElect(state: GameState): void {
 // ---------------------------------------------------------------------------
 // End of turn, end of game, scoring
 // ---------------------------------------------------------------------------
+
+/** House rule (decision 108): at the end of the turn every leader over the hand limit discards down to it. */
+function taskHandLimit(state: GameState, task: Extract<Task, { kind: 'handLimit' }>): void {
+  const limit = state.config.handLimit ?? 0;
+  while (task.remaining.length > 0) {
+    const pid = task.remaining[0];
+    const hand = state.players[pid].hand;
+    if (limit > 0 && hand.length > limit) {
+      state.pending = { kind: 'discardDown', playerId: pid, hand: [...hand], count: hand.length - limit, limit };
+      return;
+    }
+    task.remaining.shift();
+  }
+  popTask(state);
+}
+
+function actionDiscardDown(state: GameState, action: Extract<Action, { kind: 'discardDown' }>, pending: Extract<PendingDecision, { kind: 'discardDown' }>): void {
+  require(action.cardUids.length === pending.count, `Discard exactly ${pending.count} card(s)`);
+  require(new Set(action.cardUids).size === action.cardUids.length, 'Each card may be discarded once');
+  for (const uid of action.cardUids) discardFromHand(state, action.playerId, uid);
+  log(state, 'politics', `${label(state, action.playerId)} discards ${pending.count} card(s) to keep to the hand limit of ${pending.limit}.`);
+  const task = state.tasks[0] as Extract<Task, { kind: 'handLimit' }>;
+  task.remaining.shift();
+}
 
 function taskEndTurn(state: GameState): void {
   popTask(state);
@@ -355,6 +395,9 @@ export function handlePoliticsTask(state: GameState, task: Task): boolean {
     case 'endTurn':
       taskEndTurn(state);
       return true;
+    case 'handLimit':
+      taskHandLimit(state, task);
+      return true;
     case 'gameOver':
       taskGameOver(state);
       return true;
@@ -373,6 +416,9 @@ export function handlePoliticsAction(state: GameState, action: Action, pending: 
       return true;
     case 'playCards':
       actionPlayCards(state, action, pending as Extract<PendingDecision, { kind: 'playCards' }>);
+      return true;
+    case 'discardDown':
+      actionDiscardDown(state, action, pending as Extract<PendingDecision, { kind: 'discardDown' }>);
       return true;
     case 'invokeApple':
       actionInvokeApple(state, action);

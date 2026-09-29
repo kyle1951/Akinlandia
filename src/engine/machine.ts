@@ -29,6 +29,7 @@ export const ACTIONS_FOR_DECISION: Record<DecisionKind, Action['kind'][]> = {
   reflagShips: ['reflagShips'],
   disband: ['disband'],
   playCards: ['playCards'],
+  discardDown: ['discardDown'],
   invokeApple: ['invokeApple'],
   philosophersTarget: ['philosophersTarget'],
   singOffVote: ['singOffVote'],

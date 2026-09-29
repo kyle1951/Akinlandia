@@ -14,6 +14,26 @@ function table() {
 }
 
 describe('online room', () => {
+  it('carries the house rules from the lobby into the game config', () => {
+    const room = table();
+    room.handle(HOST, {
+      type: 'configure',
+      seats: [
+        { name: 'A', leaderName: 'A', isBot: false },
+        { name: 'B', leaderName: 'B', isBot: true },
+        { name: 'C', leaderName: 'C', isBot: true },
+      ],
+      setupMode: 'quick',
+      alwaysPromptReactions: false,
+      foodCapPerCity: 3,
+      handLimit: 7,
+    });
+    expect(room.lobbyFor(GUEST)).toMatchObject({ foodCapPerCity: 3, handLimit: 7 });
+    room.handle(HOST, { type: 'claim', seat: 0, name: 'A', leaderName: 'A the Great' });
+    room.handle(HOST, { type: 'start' });
+    expect(room.state!.config).toMatchObject({ foodCapPerCity: 3, handLimit: 7 });
+  });
+
   it('runs a lobby: host configures seats, players claim them, only the host may start', () => {
     const room = table();
     expect(room.lobbyFor(HOST).hostIsYou).toBe(true);

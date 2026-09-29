@@ -30,6 +30,9 @@ export interface RoomRecord {
   setupMode: SetupMode;
   mapId: string;
   alwaysPromptReactions: boolean;
+  /** house rules (decisions 107-108); absent on tables created before they existed */
+  foodCapPerCity?: number;
+  handLimit?: number;
   seedText: string;
   config: GameConfig | null;
   seed: number | null;
@@ -107,6 +110,8 @@ export class Room {
       setupMode: this.record.setupMode,
       mapId: this.record.mapId ?? 'quickstart',
       alwaysPromptReactions: this.record.alwaysPromptReactions,
+      foodCapPerCity: this.record.foodCapPerCity ?? 0,
+      handLimit: this.record.handLimit ?? 0,
       hostIsYou: !!token && this.record.hostToken === token,
       mySeat: mySeat >= 0 ? mySeat : null,
       playersOnline,
@@ -190,6 +195,9 @@ export class Room {
     this.record.setupMode = msg.setupMode === 'full' ? 'full' : 'quick';
     this.record.mapId = msg.mapId && MAPS[msg.mapId] ? msg.mapId : 'quickstart';
     this.record.alwaysPromptReactions = !!msg.alwaysPromptReactions;
+    const small = (n: unknown) => (typeof n === 'number' && Number.isFinite(n) ? Math.max(0, Math.min(99, Math.floor(n))) : 0);
+    this.record.foodCapPerCity = small(msg.foodCapPerCity);
+    this.record.handLimit = small(msg.handLimit);
     this.record.seedText = (msg.seed ?? '').slice(0, 64);
     return { rows: [], recordChanged: true };
   }
@@ -206,6 +214,8 @@ export class Room {
       setupMode: this.record.setupMode,
       alwaysPromptReactions: this.record.alwaysPromptReactions,
       mapId: this.record.mapId ?? 'quickstart',
+      foodCapPerCity: this.record.foodCapPerCity ?? 0,
+      handLimit: this.record.handLimit ?? 0,
     };
     this.record.config = config;
     this.record.seed = seed;

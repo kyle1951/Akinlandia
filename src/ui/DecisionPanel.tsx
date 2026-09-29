@@ -86,6 +86,8 @@ export function DecisionPanel(props: Props) {
             return <Disband {...props} pending={pending} />;
           case 'playCards':
             return <PlayCards {...props} pending={pending} />;
+          case 'discardDown':
+            return <DiscardDown {...props} pending={pending} />;
           case 'invokeApple':
             return <InvokeApple {...props} pending={pending} />;
           case 'philosophersTarget':
@@ -804,6 +806,40 @@ function PlayCards({ game, pending, dispatch }: P<'playCards'>) {
   );
 }
 
+function DiscardDown({ game, pending, dispatch }: P<'discardDown'>) {
+  const [chosen, setChosen] = useState<string[]>([]);
+  useEffect(() => setChosen([]), [pending]);
+  return (
+    <div style={{ maxWidth: 540 }}>
+      <h2>Hand limit</h2>
+      <p style={{ fontSize: 12 }}>
+        You hold {pending.hand.length} cards; the limit is {pending.limit}. Click {pending.count} card{pending.count === 1 ? '' : 's'} to discard. The log records only how many.
+      </p>
+      <div>
+        {pending.hand.map((uid) => {
+          const def = CARD_BY_TYPE[game.cards[uid].type];
+          const out = chosen.includes(uid);
+          return (
+            <div key={uid} className={`card ${out ? 'play' : ''}`} onClick={() => setChosen((c) => (out ? c.filter((x) => x !== uid) : c.length < pending.count ? [...c, uid] : c))}>
+              {out && <span className="tag">DISCARD</span>}
+              <div>
+                <div className="value">{def.value}</div>
+                <div className="name">{def.name}</div>
+              </div>
+              <div className="text">{def.text.slice(0, 110)}{def.text.length > 110 ? '…' : ''}</div>
+            </div>
+          );
+        })}
+      </div>
+      <div className="actions">
+        <button className="primary" disabled={chosen.length !== pending.count} onClick={() => dispatch({ kind: 'discardDown', playerId: pending.playerId, cardUids: chosen })}>
+          Discard {chosen.length} / {pending.count}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function InvokeApple({ game, pending, dispatch }: P<'invokeApple'>) {
   const round = game.turnData.politics!;
   const a = game.players[pending.playerId].allianceId!;
@@ -880,7 +916,7 @@ function SingOffVote({ game, pending, dispatch }: P<'singOffVote'>) {
 }
 
 export function isPrivateDecision(p: PendingDecision): boolean {
-  return p.kind === 'allocate' || p.kind === 'playCards' || p.kind === 'reaction';
+  return p.kind === 'allocate' || p.kind === 'playCards' || p.kind === 'reaction' || p.kind === 'discardDown';
 }
 
 export function privateWhat(p: PendingDecision): string {
@@ -889,6 +925,8 @@ export function privateWhat(p: PendingDecision): string {
       return 'The allocation sheet is filled in privately and revealed only through deployment.';
     case 'playCards':
       return 'Fill the PLAY and RETAIN envelopes in private. Hands are secret; only their size is known.';
+    case 'discardDown':
+      return 'Your hand is over the limit. Choose your discards in private.';
     case 'reaction':
       return 'A reaction window has opened. Whether you hold the card is your own affair.';
     default:

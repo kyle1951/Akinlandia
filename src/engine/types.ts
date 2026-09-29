@@ -314,6 +314,7 @@ export type PendingDecision =
   | { kind: 'reflagShips'; playerId: PlayerId; tileId: TileId; unitIds: UnitId[]; candidates: PlayerId[] }
   | { kind: 'disband'; playerId: PlayerId; shortfall: number; candidates: UnitId[] }
   | { kind: 'playCards'; playerId: PlayerId; hand: CardUid[]; round: number }
+  | { kind: 'discardDown'; playerId: PlayerId; hand: CardUid[]; count: number; limit: number }
   | { kind: 'invokeApple'; playerId: PlayerId }
   | {
       kind: 'philosophersTarget';
@@ -351,6 +352,7 @@ export type Action =
   | { kind: 'reflagShips'; playerId: PlayerId; ownerId: PlayerId }
   | { kind: 'disband'; playerId: PlayerId; unitId: UnitId }
   | { kind: 'playCards'; playerId: PlayerId; cardUids: CardUid[] }
+  | { kind: 'discardDown'; playerId: PlayerId; cardUids: CardUid[] }
   | { kind: 'invokeApple'; playerId: PlayerId; invoke: boolean }
   | { kind: 'philosophersTarget'; playerId: PlayerId; partnerId: PlayerId; cityTileId: TileId }
   | { kind: 'singOffVote'; playerId: PlayerId; votedFor: PlayerId };
@@ -424,6 +426,7 @@ export type Task =
   | { kind: 'philosophers'; remaining: PlayerId[] }
   | { kind: 'philosophersRoll'; cardPlayerId: PlayerId; partnerId: PlayerId; cityTileId: TileId }
   | { kind: 'elect' }
+  | { kind: 'handLimit'; remaining: PlayerId[] }
   | { kind: 'endTurn' }
   | { kind: 'gameOver' }
   | { kind: 'singOff'; tiedPlayerIds: PlayerId[]; voters: PlayerId[]; idx: number; votes: Record<PlayerId, PlayerId> };
@@ -440,6 +443,10 @@ export interface GameConfig {
   setupMode: SetupMode;
   alwaysPromptReactions: boolean;
   mapId: string;
+  /** house rule (decision 107): after feeding, stored food above this many per city held spoils; 0 or absent = no cap */
+  foodCapPerCity?: number;
+  /** house rule (decision 108): at the end of each turn a leader holding more cards discards down to it; 0 or absent = no limit */
+  handLimit?: number;
   /** safety cap for simulations; 0 = none */
   maxTurns?: number;
 }
