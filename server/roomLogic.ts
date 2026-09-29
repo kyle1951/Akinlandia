@@ -3,7 +3,7 @@
  * actions, delegating seats to bots. No Cloudflare APIs here so it can be
  * unit-tested; the Durable Object in room.ts owns persistence and sockets.
  */
-import type { Action, GameConfig, GameState, SetupMode } from '../src/engine/types';
+import type { Action, GameConfig, GameState, MilitaryMode, SetupMode } from '../src/engine/types';
 import { RulesError } from '../src/engine/types';
 import { createGame } from '../src/engine/setup';
 import { applyActionInPlace, isGameOver } from '../src/engine/machine';
@@ -33,6 +33,8 @@ export interface RoomRecord {
   /** house rules (decisions 107-108); absent on tables created before they existed */
   foodCapPerCity?: number;
   handLimit?: number;
+  /** decision 109; absent on tables created before it existed */
+  militaryMode?: MilitaryMode;
   seedText: string;
   config: GameConfig | null;
   seed: number | null;
@@ -112,6 +114,7 @@ export class Room {
       alwaysPromptReactions: this.record.alwaysPromptReactions,
       foodCapPerCity: this.record.foodCapPerCity ?? 0,
       handLimit: this.record.handLimit ?? 0,
+      militaryMode: this.record.militaryMode ?? 'simultaneous',
       hostIsYou: !!token && this.record.hostToken === token,
       mySeat: mySeat >= 0 ? mySeat : null,
       playersOnline,
@@ -198,6 +201,7 @@ export class Room {
     const small = (n: unknown) => (typeof n === 'number' && Number.isFinite(n) ? Math.max(0, Math.min(99, Math.floor(n))) : 0);
     this.record.foodCapPerCity = small(msg.foodCapPerCity);
     this.record.handLimit = small(msg.handLimit);
+    this.record.militaryMode = msg.militaryMode === 'sequential' ? 'sequential' : 'simultaneous';
     this.record.seedText = (msg.seed ?? '').slice(0, 64);
     return { rows: [], recordChanged: true };
   }
@@ -216,6 +220,7 @@ export class Room {
       mapId: this.record.mapId ?? 'quickstart',
       foodCapPerCity: this.record.foodCapPerCity ?? 0,
       handLimit: this.record.handLimit ?? 0,
+      militaryMode: this.record.militaryMode ?? 'simultaneous',
     };
     this.record.config = config;
     this.record.seed = seed;

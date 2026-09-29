@@ -39,7 +39,9 @@ npm run deploy     # vite build + wrangler deploy (needs `npx wrangler login` on
   - `flowSetup.ts` (roles, turn start, allocation, faction order, deployment), `flowMilitary.ts`
     (sub-phases, orders, Rage/Trojan/Zeus windows, combat, casualties, retreats, captures, Trojan Horse
     effect), `flowPolitics.ts` (reconciliation, feeding, PLAY/reveal, Apple, Philosophers, elections, end of
-    turn, scoring, Sing-Off), `fullGame.ts` (tile placement setup). Each exports `handleXTask` /
+    turn, scoring, Sing-Off), `flowSimultaneous.ts` (the simultaneous military rounds of decision 109: secret
+    order sheets, reveal, border clashes, tile-by-tile settlement, rings, the resolution report),
+    `fullGame.ts` (tile placement setup). Each exports `handleXTask` /
     `handleXAction`; `machine.ts` chains them.
   - `rules/` pure rule helpers used by both the flows and the bots: `turnOrder`, `allocation`, `deploy`,
     `movement`, `combat`, `politics`, `scoring`.
@@ -58,7 +60,8 @@ npm run deploy     # vite build + wrangler deploy (needs `npx wrangler login` on
 - `src/ui/` React: `useGameController` (state, autosave to localStorage, bot pacing, run-to-end,
   export/import), `GameScreen` (layout, banners, reveal modal, privacy gating, end screen), `Board` (SVG
   hex map with pan/zoom and highlight callbacks), `DecisionPanel` (one component per decision kind),
-  `SidePanel`, `SetupScreen`, `RulesPanel` (renders `docs/rules.md`), `EndScreen`.
+  `SidePanel`, `SetupScreen`, `RulesPanel` (renders `docs/rules.md`), `EndScreen`, `ResolutionMap` (the
+  map shown after each simultaneous round).
 - **Online play.** `src/engine/view.ts` builds the redacted per-player `ClientView` (other hands, deck,
   RNG, action log, task queue and other players' pending decisions removed). `server/roomLogic.ts` is the
   pure room state machine (lobby, claims, start, actions, delegation; rebuilds state by replaying the

@@ -583,3 +583,31 @@ select {
   align-items: center;
   margin: 2px 0;
 }
+
+.modal.resolution-modal {
+  max-width: min(1100px, 96vw);
+  width: min(1100px, 96vw);
+}
+.resolution-board {
+  height: 58vh;
+  border: 2px solid #8b7550;
+  border-radius: 6px;
+}
+.resolution-legend {
+  font-size: 12px;
+  color: var(--ink-soft);
+  margin: 6px 0;
+}
+.resolution-lists {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 6px 16px;
+  font-size: 13px;
+}
+.resolution-lists h4 {
+  margin: 6px 0 2px;
+}
+.resolution-line.repulsed,
+.resolution-line.lost {
+  color: var(--crimson);
+}

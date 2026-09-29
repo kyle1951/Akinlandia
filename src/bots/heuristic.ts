@@ -4,7 +4,7 @@
  * state (seed, RNG position, action count) so bot games replay exactly without
  * the bot ever touching the game's RNG stream.
  */
-import type { Action, Allocation, AllianceId, BuildingPlacement, GameState, MoveGroup, PendingDecision, PlayerId, Tile, Unit } from '../engine/types';
+import type { Action, Allocation, AllianceId, BuildingPlacement, GameState, MoveGroup, PendingDecision, PlayerId, SubPhase, Tile, Unit } from '../engine/types';
 import { createRng, nextFloat, nextInt } from '../engine/rng';
 import type { RngState } from '../engine/rng';
 import { allianceOf, capacityOf, citiesOf, cityCount, isGeneral, membersOf, shipsOnTile, soldierCount, soldiersOnTile, tile, unitsOnTile } from '../engine/query';
@@ -99,6 +99,8 @@ export function botAction(state: GameState, pending: PendingDecision): Action {
     }
     case 'issueOrder':
       return chooseOrder(state, pending, rng);
+    case 'submitOrders':
+      return chooseOrderSheet(state, pending, rng);
     case 'reaction':
       return { kind: 'react', playerId: pid, play: chooseReaction(state, pending, rng) };
     case 'assignCasualties': {
@@ -293,7 +295,23 @@ function chooseOrder(state: GameState, pending: Extract<PendingDecision, { kind:
   return { kind: 'pass', playerId: pid };
 }
 
-function planFromTile(state: GameState, alliance: AllianceId, src: string, sub: 'ships1' | 'ships2' | 'full1' | 'full2', rng: RngState): Plan | null {
+/** Simultaneous rounds (decision 109): plan every tile at once and keep the promising moves. */
+function chooseOrderSheet(state: GameState, pending: Extract<PendingDecision, { kind: 'submitOrders' }>, rng: RngState): Action {
+  const orders: { sourceTileId: string; groups: MoveGroup[] }[] = [];
+  for (const src of pending.sourceTileIds) {
+    const plan = planFromTile(state, pending.allianceId, src, pending.subPhase, rng);
+    if (!plan || plan.score <= 0) continue;
+    try {
+      validateOrder(state, pending.allianceId, pending.subPhase, src, plan.groups);
+      orders.push({ sourceTileId: src, groups: plan.groups });
+    } catch {
+      // skip an illegal plan
+    }
+  }
+  return { kind: 'submitOrders', playerId: pending.playerId, orders, scuttle: [] };
+}
+
+function planFromTile(state: GameState, alliance: AllianceId, src: string, sub: SubPhase, rng: RngState): Plan | null {
   const units = movableUnitsAt(state, alliance, src);
   const soldiers = units.filter((u) => u.kind === 'soldier');
   const ships = units.filter((u) => u.kind === 'ship');

@@ -8,6 +8,7 @@ import { RulesError } from './types';
 import type { Action, DecisionKind, GameState, LogEntry, PendingDecision } from './types';
 import { handleSetupAction, handleSetupTask } from './flowSetup';
 import { handleMilitaryAction, handleMilitaryTask } from './flowMilitary';
+import { handleSimAction, handleSimTask } from './flowSimultaneous';
 import { handlePoliticsAction, handlePoliticsTask } from './flowPolitics';
 import { handleFullGameAction, handleFullGameTask } from './fullGame';
 
@@ -22,6 +23,7 @@ export const ACTIONS_FOR_DECISION: Record<DecisionKind, Action['kind'][]> = {
   placeShips: ['placeShips'],
   placeSoldiers: ['placeSoldiers'],
   issueOrder: ['order', 'scuttle', 'pass'],
+  submitOrders: ['submitOrders'],
   reaction: ['react'],
   assignCasualties: ['assignCasualties'],
   retreat: ['retreat'],
@@ -42,7 +44,7 @@ export function advance(state: GameState): void {
   let steps = 0;
   while (state.pending === null && state.tasks.length > 0) {
     const task = state.tasks[0];
-    const handled = handleSetupTask(state, task) || handleMilitaryTask(state, task) || handlePoliticsTask(state, task) || handleFullGameTask(state, task);
+    const handled = handleSetupTask(state, task) || handleMilitaryTask(state, task) || handleSimTask(state, task) || handlePoliticsTask(state, task) || handleFullGameTask(state, task);
     if (!handled) throw new Error(`No handler for task ${task.kind}`);
     if (++steps > MAX_STEPS) throw new Error('advance: runaway task loop');
   }
@@ -67,7 +69,7 @@ export function applyActionInPlace(state: GameState, action: Action): LogEntry[]
   // Callers wanting atomicity use applyAction (which clones first).
   state.pending = null;
   try {
-    const handled = handleSetupAction(state, action, pending) || handleMilitaryAction(state, action, pending) || handlePoliticsAction(state, action, pending) || handleFullGameAction(state, action, pending);
+    const handled = handleSetupAction(state, action, pending) || handleMilitaryAction(state, action, pending) || handleSimAction(state, action, pending) || handlePoliticsAction(state, action, pending) || handleFullGameAction(state, action, pending);
     if (!handled) throw new Error(`No handler for action ${action.kind}`);
   } catch (e) {
     state.pending = pending;

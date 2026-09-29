@@ -9,7 +9,7 @@
  * pending decisions. Everything on the board and in the record of deeds is
  * public and stays.
  */
-import type { GameState, PendingDecision, PlayerId } from './types';
+import type { AllianceId, GameState, PendingDecision, PlayerId } from './types';
 import { cloneState } from './machine';
 
 export interface WaitingOn {
@@ -33,6 +33,12 @@ export function viewForPlayer(state: GameState, viewerId: PlayerId | null): Clie
   v.actionLog = [];
   v.tasks = [];
   v.deck = state.deck.map(() => HIDDEN);
+  // sealed order sheets of other alliances stay secret until they are revealed (decision 109)
+  const sim = v.turnData.sim;
+  if (sim && sim.stage === 'collect') {
+    const mine = viewerId ? v.players[viewerId]?.allianceId : null;
+    for (const a of Object.keys(sim.submitted) as AllianceId[]) if (a !== mine) delete sim.submitted[a];
+  }
   // hands: keep only the viewer's card identities
   const known = new Set<string>();
   for (const pid of state.seatOrder) {

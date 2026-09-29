@@ -10,6 +10,7 @@ import { LogPanel, PlayerSwatch, PlayersPanel, StatusPanel } from './SidePanel';
 import { PrivacyScreen } from './PrivacyScreen';
 import { RulesPanel } from './RulesPanel';
 import { EndScreen } from './EndScreen';
+import { ResolutionMap } from './ResolutionMap';
 import type { Controller } from './useGameController';
 
 export function GameScreen({ ctl }: { ctl: Controller }) {
@@ -22,13 +23,18 @@ export function GameScreen({ ctl }: { ctl: Controller }) {
   const [banner, setBanner] = useState<LogEntry | null>(null);
   const [reveal, setReveal] = useState<LogEntry[] | null>(null);
   const bannerTimer = useRef<number | null>(null);
+  const resolutionKey = game.lastResolution ? `${game.lastResolution.turn}:${game.lastResolution.round}` : null;
+  // a resolution already on the board when the screen opens (resume, reconnect) is not shown again
+  const [seenResolution, setSeenResolution] = useState<string | null>(resolutionKey);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const online = ctl.online;
   const pending = game.pending;
   const decisionKey = pending ? `${game.log.length}:${pending.playerId}:${pending.kind}` : null;
   const humanTurn = online ? !!pending && pending.playerId === online.viewerId : !!pending && !game.players[pending.playerId].isBot;
-  const needsPrivacy = !online && humanTurn && pending && isPrivateDecision(pending) && unlocked !== decisionKey && !reveal;
+  const hasHuman = !!online || game.seatOrder.some((p) => !game.players[p].isBot);
+  const showResolution = !!game.lastResolution && resolutionKey !== seenResolution && hasHuman && !ctl.running && ctl.speed !== 'instant';
+  const needsPrivacy = !online && humanTurn && pending && isPrivateDecision(pending) && unlocked !== decisionKey && !reveal && !showResolution;
 
   // Banners for FINAL ORDERs and battles; reveal modal for politics.
   useEffect(() => {
@@ -129,7 +135,7 @@ export function GameScreen({ ctl }: { ctl: Controller }) {
   return (
     <div className="app">
       <div className="board-area">
-        <Board game={game} highlights={board.highlights} onTileClick={board.onTileClick} showCoords={showCoords} />
+        <Board game={game} highlights={board.highlights} onTileClick={board.onTileClick} showCoords={showCoords} arrows={board.arrows} />
         <div className="topbar">
           <div className="status">
             <b>Akinlandia</b> · {online ? `table ${online.code} · ${online.connected ? 'connected' : 'reconnecting...'}` : `seed ${game.rng.seed}`} · {game.config.setupMode === 'quick' ? 'Quick Start' : 'Full Game'}
@@ -202,7 +208,7 @@ export function GameScreen({ ctl }: { ctl: Controller }) {
         )}
       </div>
       <div className="side">
-        {pending && humanTurn && !needsPrivacy && !reveal && !ctl.running && <DecisionPanel game={game} pending={pending} dispatch={ctl.dispatch} setBoard={setBoard} />}
+        {pending && humanTurn && !needsPrivacy && !reveal && !showResolution && !ctl.running && <DecisionPanel game={game} pending={pending} dispatch={ctl.dispatch} setBoard={setBoard} />}
         {!online && pending && !humanTurn && !isGameOver(game) && (
           <div className="decision">
             <PlayerSwatch game={game} pid={pending.playerId} />
@@ -234,6 +240,7 @@ export function GameScreen({ ctl }: { ctl: Controller }) {
       {needsPrivacy && pending && <PrivacyScreen name={game.players[pending.playerId].leaderName} what={privateWhat(pending)} onContinue={() => setUnlocked(decisionKey)} />}
       {rules && <RulesPanel onClose={() => setRules(false)} />}
       {revealView}
+      {showResolution && game.lastResolution && <ResolutionMap game={game} report={game.lastResolution} onClose={() => setSeenResolution(resolutionKey)} />}
       {isGameOver(game) && showEnd && game.result && <EndScreen game={game} onNewGame={online ? online.leave : ctl.quit} onClose={() => setShowEnd(false)} />}
     </div>
   );

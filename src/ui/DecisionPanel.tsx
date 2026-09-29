@@ -1,18 +1,20 @@
 import { useEffect, useMemo, useState } from 'react';
-import type { Action, Allocation, BuildingKind, BuildingPlacement, GameState, PendingDecision, PlayerId } from '../engine/types';
+import type { Action, AllianceId, Allocation, BuildingKind, BuildingPlacement, GameState, MoveGroup, PendingDecision, PlayerId, SheetOrder, SubPhase } from '../engine/types';
 import { checkAllocation, emptyAllocation } from '../engine/rules/allocation';
 import { checkBuildingPlacements } from '../engine/rules/deploy';
 import { destinationsFrom, movableUnitsAt, validateOrder } from '../engine/rules/movement';
 import { allianceName, capacityOf, cityCount, tile, unitsOnTile } from '../engine/query';
 import { tileLabel } from '../engine/map';
 import { CARD_BY_TYPE } from '../data/cards';
-import type { Highlight } from './Board';
+import type { BoardArrow, Highlight } from './Board';
+import { ALLIANCE_COLORS } from '../data/factions';
 import { PlayerSwatch } from './SidePanel';
 import { TilePreview } from './TilePreview';
 
 export interface BoardControl {
   highlights: Highlight[];
   onTileClick?: (tileId: string) => void;
+  arrows?: BoardArrow[];
 }
 
 interface Props {
@@ -72,6 +74,8 @@ export function DecisionPanel(props: Props) {
             return <PlaceCounted {...props} pending={pending} />;
           case 'issueOrder':
             return <IssueOrder {...props} pending={pending} />;
+          case 'submitOrders':
+            return <SubmitOrders {...props} pending={pending} />;
           case 'reaction':
             return <Reaction {...props} pending={pending} />;
           case 'assignCasualties':
@@ -432,19 +436,16 @@ function PlaceCounted({ game, pending, dispatch, setBoard }: Omit<Props, 'pendin
   );
 }
 
-function IssueOrder({ game, pending, dispatch, setBoard }: P<'issueOrder'>) {
+/** Draft one tile's order: pick a source, then assign its units to adjacent destinations. */
+function useOrderBuilder(game: GameState, allianceId: AllianceId, subPhase: SubPhase, resetKey: unknown) {
   const [source, setSource] = useState<string | null>(null);
   const [assign, setAssign] = useState<Record<string, Record<string, number>>>({}); // dest -> groupKey -> n
-  const [confirm, setConfirm] = useState(false);
-  const [scuttle, setScuttle] = useState<string[]>([]);
   useEffect(() => {
     setSource(null);
     setAssign({});
-    setConfirm(false);
-    setScuttle([]);
-  }, [pending]);
+  }, [resetKey]);
   const groups = useMemo(() => {
-    const units = source ? movableUnitsAt(game, pending.allianceId, source) : [];
+    const units = source ? movableUnitsAt(game, allianceId, source) : [];
     const m = new Map<string, { key: string; ownerId: PlayerId; kind: 'soldier' | 'ship'; ids: string[] }>();
     for (const u of units) {
       const key = `${u.ownerId}:${u.kind}`;
@@ -453,140 +454,160 @@ function IssueOrder({ game, pending, dispatch, setBoard }: P<'issueOrder'>) {
       m.set(key, g);
     }
     return [...m.values()];
-  }, [game, pending.allianceId, source]);
+  }, [game, allianceId, source]);
   const dests = source ? destinationsFrom(game, source) : [];
   const used = (key: string) => Object.values(assign).reduce((n, d) => n + (d[key] ?? 0), 0);
-  const groupsForAction = () => {
-    const taken: Record<string, number> = {};
-    const out: { destTileId: string; unitIds: string[] }[] = [];
-    for (const [dest, byKey] of Object.entries(assign)) {
-      const ids: string[] = [];
-      for (const [key, n] of Object.entries(byKey)) {
-        if (n <= 0) continue;
-        const g = groups.find((x) => x.key === key);
-        if (!g) continue;
-        const start = taken[key] ?? 0;
-        ids.push(...g.ids.slice(start, start + n));
-        taken[key] = start + n;
-      }
-      if (ids.length) out.push({ destTileId: dest, unitIds: ids });
+  const taken: Record<string, number> = {};
+  const actionGroups: MoveGroup[] = [];
+  for (const [dest, byKey] of Object.entries(assign)) {
+    const ids: string[] = [];
+    for (const [key, n] of Object.entries(byKey)) {
+      if (n <= 0) continue;
+      const g = groups.find((x) => x.key === key);
+      if (!g) continue;
+      const start = taken[key] ?? 0;
+      ids.push(...g.ids.slice(start, start + n));
+      taken[key] = start + n;
     }
-    return out;
-  };
-  const actionGroups = groupsForAction();
+    if (ids.length) actionGroups.push({ destTileId: dest, unitIds: ids });
+  }
   let err: string | null = null;
   if (source && actionGroups.length) {
     try {
-      validateOrder(game, pending.allianceId, pending.subPhase, source, actionGroups);
+      validateOrder(game, allianceId, subPhase, source, actionGroups);
     } catch (e) {
       err = (e as Error).message;
     }
   }
-  useBoard(
-    setBoard,
-    {
-      highlights: source
-        ? [{ tileId: source, kind: 'source' }, ...dests.map((d) => ({ tileId: d.tileId, kind: (assign[d.tileId] && Object.values(assign[d.tileId]).some((n) => n > 0) ? 'selected' : 'legal') as Highlight['kind'] }))]
-        : pending.sourceTileIds.map((t) => ({ tileId: t, kind: 'legal' as const })),
-      onTileClick: (id) => {
-        if (!source) {
-          if (pending.sourceTileIds.includes(id)) setSource(id);
-          return;
-        }
-        if (pending.sourceTileIds.includes(id) && id !== source && !dests.some((d) => d.tileId === id)) {
-          setSource(id);
-          setAssign({});
-          return;
-        }
-        if (dests.some((d) => d.tileId === id)) {
-          // quick assign: one soldier (and a ship if crossing sea) from the first group with units left
-          setAssign((a) => {
-            const cur = { ...(a[id] ?? {}) };
-            const sea = dests.find((d) => d.tileId === id)!.via === 'sea';
-            const sg = groups.find((g) => g.kind === 'soldier' && used(g.key) < g.ids.length);
-            if (!sg) return a;
-            cur[sg.key] = (cur[sg.key] ?? 0) + 1;
-            if (sea) {
-              const shg = groups.find((g) => g.kind === 'ship' && used(g.key) < g.ids.length);
-              if (shg) cur[shg.key] = (cur[shg.key] ?? 0) + 1;
-            }
-            return { ...a, [id]: cur };
-          });
-        }
-      },
-    },
-    [pending, source, assign, groups.length],
-  );
-  const announce = () => {
-    const parts = actionGroups.map((g) => {
-      const s = g.unitIds.filter((id) => game.units[id].kind === 'soldier').length;
-      const sh = g.unitIds.filter((id) => game.units[id].kind === 'ship').length;
-      const desc = [s ? `${s} SOLDIER${s === 1 ? '' : 'S'}` : '', sh ? `${sh} SHIP${sh === 1 ? '' : 'S'}` : ''].filter(Boolean).join(' AND ');
-      return `${desc} TO ${tileLabel(tile(game, g.destTileId)).toUpperCase()}`;
-    });
-    return `I, ${game.players[pending.playerId].leaderName.toUpperCase()}, ISSUE A FINAL ORDER. ${parts.join(', ')}.`;
+  const pick = (id: string) => {
+    setSource(id);
+    setAssign({});
   };
+  const clear = () => {
+    setSource(null);
+    setAssign({});
+  };
+  /** one soldier (and a ship when crossing the sea) from the first group with units left */
+  const quickAssign = (id: string) =>
+    setAssign((a) => {
+      const cur = { ...(a[id] ?? {}) };
+      const sea = dests.find((d) => d.tileId === id)?.via === 'sea';
+      const sg = groups.find((g) => g.kind === 'soldier' && used(g.key) < g.ids.length);
+      if (!sg) return a;
+      cur[sg.key] = (cur[sg.key] ?? 0) + 1;
+      if (sea) {
+        const shg = groups.find((g) => g.kind === 'ship' && used(g.key) < g.ids.length);
+        if (shg) cur[shg.key] = (cur[shg.key] ?? 0) + 1;
+      }
+      return { ...a, [id]: cur };
+    });
+  const isDest = (id: string) => dests.some((d) => d.tileId === id);
+  const highlights = (sourceTileIds: string[]): Highlight[] =>
+    source
+      ? [{ tileId: source, kind: 'source' }, ...dests.map((d) => ({ tileId: d.tileId, kind: (assign[d.tileId] && Object.values(assign[d.tileId]).some((n) => n > 0) ? 'selected' : 'legal') as Highlight['kind'] }))]
+      : sourceTileIds.map((t) => ({ tileId: t, kind: 'legal' as const }));
+  /** clicking a source picks it; clicking a destination assigns another unit to it */
+  const click = (id: string, sourceTileIds: string[]) => {
+    if (!source) {
+      if (sourceTileIds.includes(id)) pick(id);
+      return;
+    }
+    if (sourceTileIds.includes(id) && id !== source && !isDest(id)) {
+      pick(id);
+      return;
+    }
+    if (isDest(id)) quickAssign(id);
+  };
+  return { source, pick, clear, assign, setAssign, groups, dests, used, actionGroups, err, highlights, click };
+}
+
+type OrderBuilder = ReturnType<typeof useOrderBuilder>;
+
+function DestinationCounters({ game, b }: { game: GameState; b: OrderBuilder }) {
+  if (!b.source) return null;
+  return (
+    <div>
+      <div>
+        <b>From {tileLabel(tile(game, b.source))}</b>: {b.groups.map((g) => `${g.ids.length} ${g.kind}${g.ids.length === 1 ? '' : 's'} of ${game.players[g.ownerId].leaderName}`).join(', ')}
+      </div>
+      {b.dests.map((d) => (
+        <div key={d.tileId} style={{ border: '1px solid #b59f75', borderRadius: 4, padding: 4, margin: '4px 0' }}>
+          <b>
+            To {tileLabel(tile(game, d.tileId))} <span className="chip">{d.via === 'sea' ? 'by sea' : 'by land'}</span>
+          </b>{' '}
+          {describeOccupants(game, d.tileId)}
+          <div>
+            {b.groups
+              .filter((g) => (d.via === 'sea' ? true : g.kind === 'soldier'))
+              .map((g) => (
+                <span key={g.key} style={{ marginRight: 10 }}>
+                  <PlayerSwatch game={game} pid={g.ownerId} />
+                  {g.kind}s{' '}
+                  <Counter value={b.assign[d.tileId]?.[g.key] ?? 0} onChange={(n) => b.setAssign((a) => ({ ...a, [d.tileId]: { ...(a[d.tileId] ?? {}), [g.key]: n } }))} max={(b.assign[d.tileId]?.[g.key] ?? 0) + g.ids.length - b.used(g.key)} />
+                </span>
+              ))}
+          </div>
+        </div>
+      ))}
+      {b.err && <div className="error">{b.err}</div>}
+    </div>
+  );
+}
+
+function groupText(game: GameState, unitIds: string[]): string {
+  const s = unitIds.filter((id) => game.units[id]?.kind === 'soldier').length;
+  const sh = unitIds.filter((id) => game.units[id]?.kind === 'ship').length;
+  return [s ? `${s} SOLDIER${s === 1 ? '' : 'S'}` : '', sh ? `${sh} SHIP${sh === 1 ? '' : 'S'}` : ''].filter(Boolean).join(' AND ');
+}
+
+function orderText(game: GameState, groups: MoveGroup[]): string {
+  return groups.map((g) => `${groupText(game, g.unitIds)} TO ${tileLabel(tile(game, g.destTileId)).toUpperCase()}`).join(', ');
+}
+
+function ScuttleList({ game, ids, chosen, setChosen }: { game: GameState; ids: string[]; chosen: string[]; setChosen: (f: (s: string[]) => string[]) => void }) {
+  return (
+    <>
+      {ids.map((id) => (
+        <label key={id}>
+          <input type="checkbox" checked={chosen.includes(id)} onChange={(e) => setChosen((s) => (e.target.checked ? [...s, id] : s.filter((x) => x !== id)))} /> ship of {game.players[game.units[id].ownerId].leaderName} on {tileLabel(tile(game, game.units[id].tileId))}
+        </label>
+      ))}
+    </>
+  );
+}
+
+function IssueOrder({ game, pending, dispatch, setBoard }: P<'issueOrder'>) {
+  const b = useOrderBuilder(game, pending.allianceId, pending.subPhase, pending);
+  const [confirm, setConfirm] = useState(false);
+  const [scuttle, setScuttle] = useState<string[]>([]);
+  useEffect(() => {
+    setConfirm(false);
+    setScuttle([]);
+  }, [pending]);
+  useBoard(setBoard, { highlights: b.highlights(pending.sourceTileIds), onTileClick: (id) => b.click(id, pending.sourceTileIds) }, [pending, b.source, b.assign, b.groups.length]);
+  const announce = () => `I, ${game.players[pending.playerId].leaderName.toUpperCase()}, ISSUE A FINAL ORDER. ${orderText(game, b.actionGroups)}.`;
   return (
     <div>
       <h2>Orders of the {allianceName(pending.allianceId)} General</h2>
       <p style={{ fontSize: 12 }}>
         {pending.subPhase.startsWith('ships') ? 'Ship sub-phase: only manned ships (one soldier per ship) may move, across sea edges.' : 'Full movement: soldiers march across land edges without mountains; manned ships sail across sea edges.'} Each order disposes of one tile: pick a source, then assign units to adjacent destinations.
       </p>
-      {!source && <p>Click a highlighted tile holding units you can still order, or pass.</p>}
-      {source && (
-        <div>
-          <div>
-            <b>From {tileLabel(tile(game, source))}</b>: {groups.map((g) => `${g.ids.length} ${g.kind}${g.ids.length === 1 ? '' : 's'} of ${game.players[g.ownerId].leaderName}`).join(', ')}
-          </div>
-          {dests.map((d) => (
-            <div key={d.tileId} style={{ border: '1px solid #b59f75', borderRadius: 4, padding: 4, margin: '4px 0' }}>
-              <b>
-                To {tileLabel(tile(game, d.tileId))} <span className="chip">{d.via === 'sea' ? 'by sea' : 'by land'}</span>
-              </b>{' '}
-              {describeOccupants(game, d.tileId)}
-              <div>
-                {groups
-                  .filter((g) => (d.via === 'sea' ? true : g.kind === 'soldier'))
-                  .map((g) => (
-                    <span key={g.key} style={{ marginRight: 10 }}>
-                      <PlayerSwatch game={game} pid={g.ownerId} />
-                      {g.kind}s{' '}
-                      <Counter value={assign[d.tileId]?.[g.key] ?? 0} onChange={(n) => setAssign((a) => ({ ...a, [d.tileId]: { ...(a[d.tileId] ?? {}), [g.key]: n } }))} max={(assign[d.tileId]?.[g.key] ?? 0) + g.ids.length - used(g.key)} />
-                    </span>
-                  ))}
-              </div>
-            </div>
-          ))}
-          {err && <div className="error">{err}</div>}
-        </div>
-      )}
+      {!b.source && <p>Click a highlighted tile holding units you can still order, or pass.</p>}
+      <DestinationCounters game={game} b={b} />
       {pending.scuttleableShipIds.length > 0 && (
         <details>
           <summary>Unmanned ships ({pending.scuttleableShipIds.length}) — destroy some?</summary>
-          {pending.scuttleableShipIds.map((id) => (
-            <label key={id}>
-              <input type="checkbox" checked={scuttle.includes(id)} onChange={(e) => setScuttle((s) => (e.target.checked ? [...s, id] : s.filter((x) => x !== id)))} /> ship of {game.players[game.units[id].ownerId].leaderName} on {tileLabel(tile(game, game.units[id].tileId))}
-            </label>
-          ))}
+          <ScuttleList game={game} ids={pending.scuttleableShipIds} chosen={scuttle} setChosen={setScuttle} />
           <button className="small danger" disabled={scuttle.length === 0} onClick={() => dispatch({ kind: 'scuttle', playerId: pending.playerId, unitIds: scuttle })}>
             Destroy selected ships
           </button>
         </details>
       )}
       <div className="actions">
-        <button className="primary" disabled={!source || actionGroups.length === 0 || !!err} onClick={() => setConfirm(true)}>
+        <button className="primary" disabled={!b.source || b.actionGroups.length === 0 || !!b.err} onClick={() => setConfirm(true)}>
           Announce the FINAL ORDER
         </button>
-        {source && (
-          <button
-            onClick={() => {
-              setSource(null);
-              setAssign({});
-            }}
-          >
-            Choose another tile
-          </button>
-        )}
+        {b.source && <button onClick={b.clear}>Choose another tile</button>}
         <button onClick={() => dispatch({ kind: 'pass', playerId: pending.playerId })}>No further orders (pass)</button>
       </div>
       {confirm && (
@@ -600,10 +621,123 @@ function IssueOrder({ game, pending, dispatch, setBoard }: P<'issueOrder'>) {
                 className="primary"
                 onClick={() => {
                   setConfirm(false);
-                  dispatch({ kind: 'order', playerId: pending.playerId, sourceTileId: source!, groups: actionGroups });
+                  dispatch({ kind: 'order', playerId: pending.playerId, sourceTileId: b.source!, groups: b.actionGroups });
                 }}
               >
                 So ordered
+              </button>
+              <button onClick={() => setConfirm(false)}>Reconsider</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Simultaneous rounds (decision 109): the General drafts every order, then seals the sheet. */
+function SubmitOrders({ game, pending, dispatch, setBoard }: P<'submitOrders'>) {
+  const [drafts, setDrafts] = useState<SheetOrder[]>([]);
+  const [scuttle, setScuttle] = useState<string[]>([]);
+  const [confirm, setConfirm] = useState(false);
+  useEffect(() => {
+    setDrafts([]);
+    setScuttle([]);
+    setConfirm(false);
+  }, [pending]);
+  const b = useOrderBuilder(game, pending.allianceId, pending.subPhase, pending);
+  const drafted = new Set(drafts.map((d) => d.sourceTileId));
+  const sources = pending.sourceTileIds.filter((t) => !drafted.has(t));
+  const color = ALLIANCE_COLORS[pending.allianceId];
+  const toArrows = (from: string, groups: MoveGroup[]): BoardArrow[] =>
+    groups.map((g) => ({ from, to: g.destTileId, color, style: 'draft', label: String(g.unitIds.filter((id) => game.units[id]?.kind === 'soldier').length) }));
+  const arrows = [...drafts.flatMap((d) => toArrows(d.sourceTileId, d.groups)), ...(b.source ? toArrows(b.source, b.actionGroups) : [])];
+  useBoard(
+    setBoard,
+    {
+      highlights: [...b.highlights(sources), ...(b.source ? [] : [...drafted].map((t) => ({ tileId: t, kind: 'selected' as const })))],
+      onTileClick: (id) => {
+        if (!b.source && drafted.has(id)) {
+          // reopen a drafted order
+          setDrafts((d) => d.filter((x) => x.sourceTileId !== id));
+          b.pick(id);
+          return;
+        }
+        b.click(id, sources);
+      },
+      arrows,
+    },
+    [pending, b.source, b.assign, b.groups.length, drafts],
+  );
+  const add = () => {
+    setDrafts((d) => [...d, { sourceTileId: b.source!, groups: b.actionGroups }]);
+    b.clear();
+  };
+  const seal = () => {
+    setConfirm(false);
+    dispatch({ kind: 'submitOrders', playerId: pending.playerId, orders: drafts, scuttle });
+  };
+  const ships = pending.subPhase === 'ships';
+  return (
+    <div>
+      <h2>
+        Secret orders of the {allianceName(pending.allianceId)} General · {ships ? 'Ships' : 'Full'} round
+      </h2>
+      <p style={{ fontSize: 12 }}>
+        {ships ? 'Only manned ships move this round (one soldier per ship, across sea edges).' : 'Soldiers march across land edges without mountains; manned ships sail across sea edges.'} Write an order for every tile you want to move, then seal the sheet. All
+        Generals&apos; orders are revealed and carried out together: units that march out do not defend the tile they left, forces that meet head-on or reach the same empty tile fight without defensive bonuses, and a force that is beaten back returns to its tile and defends it.
+      </p>
+      {!b.source && (
+        <p>
+          {sources.length ? 'Click a highlighted tile to write its order' : 'Every tile has an order'}
+          {drafts.length ? ', or click a drafted tile to change it' : ''}.
+        </p>
+      )}
+      <DestinationCounters game={game} b={b} />
+      {b.source && (
+        <div className="actions">
+          <button className="primary" disabled={b.actionGroups.length === 0 || !!b.err} onClick={add}>
+            Add this order
+          </button>
+          <button onClick={b.clear}>Cancel</button>
+        </div>
+      )}
+      <h3 style={{ marginTop: 10 }}>Order sheet ({drafts.length})</h3>
+      {drafts.length === 0 && <p style={{ fontSize: 12 }}>No orders yet. Sealing an empty sheet holds every unit in place.</p>}
+      {drafts.map((d) => (
+        <div key={d.sourceTileId} style={{ fontSize: 13, margin: '3px 0' }}>
+          From <b>{tileLabel(tile(game, d.sourceTileId))}</b>: {orderText(game, d.groups)}{' '}
+          <button className="small" onClick={() => setDrafts((x) => x.filter((o) => o.sourceTileId !== d.sourceTileId))}>
+            remove
+          </button>
+        </div>
+      ))}
+      {pending.scuttleableShipIds.length > 0 && (
+        <details>
+          <summary>Unmanned ships ({pending.scuttleableShipIds.length}) — destroy some when the orders are revealed?</summary>
+          <ScuttleList game={game} ids={pending.scuttleableShipIds} chosen={scuttle} setChosen={setScuttle} />
+        </details>
+      )}
+      <div className="actions">
+        <button className="primary" disabled={!!b.source} onClick={() => setConfirm(true)}>
+          Seal {drafts.length} order{drafts.length === 1 ? '' : 's'}
+        </button>
+      </div>
+      {confirm && (
+        <div className="modal-backdrop" onClick={() => setConfirm(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <h2>Seal the {allianceName(pending.allianceId)} orders?</h2>
+            {drafts.length === 0 && <p>No orders: every unit holds its ground.</p>}
+            {drafts.map((d) => (
+              <p key={d.sourceTileId} style={{ letterSpacing: '0.04em' }}>
+                FROM {tileLabel(tile(game, d.sourceTileId)).toUpperCase()}: {orderText(game, d.groups)}.
+              </p>
+            ))}
+            {scuttle.length > 0 && <p>Destroy {scuttle.length} unmanned ship(s).</p>}
+            <p style={{ fontSize: 12 }}>Once sealed, the orders cannot be changed. They are revealed when every General has sealed theirs.</p>
+            <div className="actions">
+              <button className="primary" onClick={seal}>
+                Seal the orders
               </button>
               <button onClick={() => setConfirm(false)}>Reconsider</button>
             </div>
@@ -916,7 +1050,7 @@ function SingOffVote({ game, pending, dispatch }: P<'singOffVote'>) {
 }
 
 export function isPrivateDecision(p: PendingDecision): boolean {
-  return p.kind === 'allocate' || p.kind === 'playCards' || p.kind === 'reaction' || p.kind === 'discardDown';
+  return p.kind === 'allocate' || p.kind === 'playCards' || p.kind === 'reaction' || p.kind === 'discardDown' || p.kind === 'submitOrders';
 }
 
 export function privateWhat(p: PendingDecision): string {
@@ -927,6 +1061,8 @@ export function privateWhat(p: PendingDecision): string {
       return 'Fill the PLAY and RETAIN envelopes in private. Hands are secret; only their size is known.';
     case 'discardDown':
       return 'Your hand is over the limit. Choose your discards in private.';
+    case 'submitOrders':
+      return 'The General writes the alliance orders in secret; they are revealed when every General has sealed theirs.';
     case 'reaction':
       return 'A reaction window has opened. Whether you hold the card is your own affair.';
     default:

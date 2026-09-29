@@ -155,8 +155,68 @@ export interface BuildingPlacement {
 // Movement and combat records
 // ---------------------------------------------------------------------------
 
-export type SubPhase = 'ships1' | 'ships2' | 'full1' | 'full2';
+export type SubPhase = 'ships1' | 'ships2' | 'full1' | 'full2' | 'ships' | 'full';
+/** the four sequential sub-phases of the rules document */
 export const SUB_PHASES: readonly SubPhase[] = ['ships1', 'ships2', 'full1', 'full2'];
+/** the two rounds of simultaneous orders (decision 109) */
+export const SIM_ROUNDS: readonly SubPhase[] = ['ships', 'full'];
+
+/** 'sequential' (the rules document: one order at a time) or 'simultaneous' (decision 109: secret orders, resolved together) */
+export type MilitaryMode = 'sequential' | 'simultaneous';
+
+/** One tile's orders within a General's secret order sheet. */
+export interface SheetOrder {
+  sourceTileId: TileId;
+  groups: MoveGroup[];
+}
+
+/** A body of units marching from one tile to another in a simultaneous round. */
+export interface SimForce {
+  id: string;
+  orderId: string;
+  allianceId: AllianceId;
+  generalId: PlayerId;
+  from: TileId;
+  to: TileId;
+  via: 'land' | 'sea';
+  unitIds: UnitId[];
+  /** size when the orders were revealed */
+  soldiers: number;
+  ships: number;
+  status: 'marching' | 'engaged' | 'arrived' | 'repulsed' | 'lost';
+  combatIds: string[];
+}
+
+export interface SimRoundState {
+  round: SubPhase;
+  stage: 'collect' | 'resolve';
+  /** sealed order sheets per alliance (hidden from other alliances until revealed) */
+  submitted: Partial<Record<AllianceId, { orders: SheetOrder[]; scuttle: UnitId[] }>>;
+  forces: SimForce[];
+}
+
+/** What happened in one simultaneous round, for the resolution map. */
+export interface ResolutionReport {
+  turn: number;
+  round: SubPhase;
+  forces: { from: TileId; to: TileId; allianceId: AllianceId; soldiers: number; ships: number; outcome: 'arrived' | 'repulsed' | 'lost' }[];
+  battles: {
+    combatId: string;
+    tileId: TileId;
+    originTileId: TileId;
+    mode: 'assault' | 'border' | 'contest';
+    attackerAllianceId: AllianceId;
+    defenderAllianceId: AllianceId;
+    attackerScore: number;
+    defenderScore: number;
+    attackerLosses: number;
+    defenderLosses: number;
+    winner: 'attacker' | 'defender' | null;
+  }[];
+  /** positions and city owners right after the round */
+  units: Unit[];
+  cityOwners: Record<TileId, PlayerId | null>;
+}
 
 export interface MoveGroup {
   destTileId: TileId;
@@ -209,6 +269,8 @@ export interface CombatRecord {
   cityOwnerBefore: PlayerId | null;
   resolved: boolean;
   trojanPlayed: boolean;
+  /** simultaneous rounds (decision 109): an assault on held units, a clash at a border, or a contest for an empty tile */
+  mode?: 'assault' | 'border' | 'contest';
 }
 
 // ---------------------------------------------------------------------------
@@ -268,6 +330,14 @@ export type PendingDecision =
       /** tiles holding at least one unit of the alliance that may still move */
       sourceTileIds: TileId[];
       /** unmanned ships of the alliance the General may scuttle */
+      scuttleableShipIds: UnitId[];
+    }
+  | {
+      kind: 'submitOrders';
+      playerId: PlayerId;
+      allianceId: AllianceId;
+      subPhase: SubPhase;
+      sourceTileIds: TileId[];
       scuttleableShipIds: UnitId[];
     }
   | {
@@ -345,6 +415,7 @@ export type Action =
   | { kind: 'order'; playerId: PlayerId; sourceTileId: TileId; groups: MoveGroup[] }
   | { kind: 'scuttle'; playerId: PlayerId; unitIds: UnitId[] }
   | { kind: 'pass'; playerId: PlayerId }
+  | { kind: 'submitOrders'; playerId: PlayerId; orders: SheetOrder[]; scuttle: UnitId[] }
   | { kind: 'react'; playerId: PlayerId; play: boolean }
   | { kind: 'assignCasualties'; playerId: PlayerId; unitIds: UnitId[] }
   | { kind: 'retreat'; playerId: PlayerId; moves: { unitId: UnitId; tileId: TileId }[] }
@@ -403,6 +474,15 @@ export type Task =
   | { kind: 'militaryStart' }
   | { kind: 'military'; subIdx: number; allianceIdx: number; started: boolean }
   | { kind: 'rageWindow'; orderId: string; remaining: PlayerId[] }
+  | { kind: 'simRound'; idx: number; started: boolean }
+  | { kind: 'simCollect'; remaining: AllianceId[] }
+  | { kind: 'simReveal' }
+  | { kind: 'simPrepare' }
+  | { kind: 'simBorders' }
+  | { kind: 'simTiles' }
+  | { kind: 'simFinish' }
+  | { kind: 'fieldBattle'; combatId: string }
+  | { kind: 'fieldOutcome'; combatId: string }
   | { kind: 'executeOrder'; orderId: string }
   | { kind: 'combat'; combatId: string }
   | { kind: 'casualties'; combatId: string; side: 'attacker' | 'defender' }
@@ -443,6 +523,8 @@ export interface GameConfig {
   setupMode: SetupMode;
   alwaysPromptReactions: boolean;
   mapId: string;
+  /** absent = 'sequential', so saves and online tables from before decision 109 replay unchanged */
+  militaryMode?: MilitaryMode;
   /** house rule (decision 107): after feeding, stored food above this many per city held spoils; 0 or absent = no cap */
   foodCapPerCity?: number;
   /** house rule (decision 108): at the end of each turn a leader holding more cards discards down to it; 0 or absent = no limit */
@@ -519,7 +601,11 @@ export interface GameState {
     /** pending combats per order */
     politics: PoliticsRound | null;
     lastReveal: PoliticsRound | null;
+    /** the simultaneous round in progress (decision 109) */
+    sim?: SimRoundState | null;
   };
+  /** the most recent simultaneous round's outcome, for the resolution map */
+  lastResolution?: ResolutionReport | null;
   endTotal: number;
   tasks: Task[];
   pending: PendingDecision | null;

@@ -10,11 +10,29 @@ export interface Highlight {
   kind: HighlightKind;
 }
 
+/** A march drawn on the map: planned orders, or what happened in a resolved round. */
+export interface BoardArrow {
+  from: string;
+  to: string;
+  color: string;
+  style: 'arrived' | 'repulsed' | 'lost' | 'draft';
+  label?: string;
+}
+
+/** A battle marker, on a tile or (for a border clash) on the edge toward another tile. */
+export interface BoardMarker {
+  tileId: string;
+  towardTileId?: string;
+  text: string;
+}
+
 export interface BoardProps {
   game: GameState;
   highlights: Highlight[];
   onTileClick?: (tileId: string) => void;
   showCoords?: boolean;
+  arrows?: BoardArrow[];
+  markers?: BoardMarker[];
 }
 
 const SIZE = 36;
@@ -23,7 +41,7 @@ function pointsStr(pts: { x: number; y: number }[]): string {
   return pts.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
 }
 
-export function Board({ game, highlights, onTileClick, showCoords }: BoardProps) {
+export function Board({ game, highlights, onTileClick, showCoords, arrows = [], markers = [] }: BoardProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const [view, setView] = useState({ x: 0, y: 0, k: 1 });
   const drag = useRef<{ x: number; y: number; vx: number; vy: number; moved: boolean } | null>(null);
@@ -125,6 +143,23 @@ export function Board({ game, highlights, onTileClick, showCoords }: BoardProps)
         {tiles.map((t) => (
           <TileView key={t.id} tile={t} game={game} units={unitsByTile.get(t.id) ?? []} highlight={hl.get(t.id)} onClick={() => clickTile(t.id)} showCoords={!!showCoords} />
         ))}
+        {arrows.map((a, i) => (
+          <Arrow key={`arrow-${i}`} arrow={a} />
+        ))}
+        {markers.map((m, i) => {
+          const c = hexToPixel(parseTileId(m.tileId), SIZE);
+          const o = m.towardTileId ? hexToPixel(parseTileId(m.towardTileId), SIZE) : c;
+          const x = (c.x + o.x) / 2;
+          const y = (c.y + o.y) / 2 - (m.towardTileId ? 0 : SIZE * 0.45);
+          return (
+            <g key={`marker-${i}`} pointerEvents="none">
+              <circle cx={x} cy={y} r={9} fill="#8b1a1a" stroke="#fff" strokeWidth={1.5} />
+              <text x={x} y={y + 4} textAnchor="middle" fontSize={11} fill="#fff">
+                {m.text}
+              </text>
+            </g>
+          );
+        })}
         {ghosts.map((g) => {
           const c = hexToPixel(g, SIZE);
           const corners = hexCorners(c.x, c.y, SIZE);
@@ -248,6 +283,43 @@ function CityView({ tile, game, cx, cy }: { tile: Tile; game: GameState; cx: num
       <text className="city-label" x={cx} y={cy + SIZE - 8}>
         {city.name}
       </text>
+    </g>
+  );
+}
+
+function Arrow({ arrow }: { arrow: BoardArrow }) {
+  const p = hexToPixel(parseTileId(arrow.from), SIZE);
+  const q = hexToPixel(parseTileId(arrow.to), SIZE);
+  const dx = q.x - p.x;
+  const dy = q.y - p.y;
+  const len = Math.hypot(dx, dy) || 1;
+  const ux = dx / len;
+  const uy = dy / len;
+  const start = { x: p.x + dx * 0.18, y: p.y + dy * 0.18 };
+  const end = { x: p.x + dx * 0.78, y: p.y + dy * 0.78 };
+  const head = [
+    { x: end.x + ux * 11, y: end.y + uy * 11 },
+    { x: end.x - uy * 9, y: end.y + ux * 9 },
+    { x: end.x + uy * 9, y: end.y - ux * 9 },
+  ];
+  const dash = arrow.style === 'repulsed' ? '6 4' : arrow.style === 'lost' ? '2 3' : arrow.style === 'draft' ? '8 3' : undefined;
+  const failed = arrow.style === 'repulsed' || arrow.style === 'lost';
+  const mid = { x: (start.x + end.x) / 2, y: (start.y + end.y) / 2 };
+  return (
+    <g pointerEvents="none" opacity={arrow.style === 'draft' ? 0.85 : 1}>
+      <line x1={start.x} y1={start.y} x2={end.x} y2={end.y} stroke="#222" strokeWidth={9} strokeLinecap="round" strokeDasharray={dash} opacity={0.55} />
+      <line x1={start.x} y1={start.y} x2={end.x} y2={end.y} stroke={arrow.color} strokeWidth={5.5} strokeLinecap="round" strokeDasharray={dash} />
+      <polygon points={pointsStr(head)} fill={arrow.color} stroke="#222" strokeWidth={1} />
+      {failed && (
+        <text x={end.x} y={end.y + 5} textAnchor="middle" fontSize={22} fontWeight="bold" fill="#c0392b" stroke="#fff" strokeWidth={2.5} paintOrder="stroke">
+          ✕
+        </text>
+      )}
+      {arrow.label && (
+        <text x={mid.x} y={mid.y - 6} textAnchor="middle" fontSize={13} fontWeight="bold" fill="#111" stroke="#fff" strokeWidth={2.5} paintOrder="stroke">
+          {arrow.label}
+        </text>
+      )}
     </g>
   );
 }

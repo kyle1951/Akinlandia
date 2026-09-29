@@ -5,7 +5,7 @@ import type { AllianceId, GameState, MoveGroup, SubPhase, Unit } from '../types'
 import { allianceOf, neighborsOf, tile, unitsOnTile } from '../query';
 
 export function isShipPhase(sub: SubPhase): boolean {
-  return sub === 'ships1' || sub === 'ships2';
+  return sub === 'ships1' || sub === 'ships2' || sub === 'ships';
 }
 
 /** Units of the alliance on the tile that may still be ordered this sub-phase. */

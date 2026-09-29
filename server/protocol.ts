@@ -2,7 +2,7 @@
  * Messages exchanged between the browser and a game room over WebSocket.
  * Shared by the server (Durable Object) and the client (remote controller).
  */
-import type { Action, SetupMode } from '../src/engine/types';
+import type { Action, MilitaryMode, SetupMode } from '../src/engine/types';
 import type { ClientView } from '../src/engine/view';
 
 export interface LobbySeat {
@@ -22,6 +22,7 @@ export interface LobbyInfo {
   alwaysPromptReactions: boolean;
   foodCapPerCity: number;
   handLimit: number;
+  militaryMode: MilitaryMode;
   hostIsYou: boolean;
   mySeat: number | null;
   playersOnline: number;
@@ -30,7 +31,7 @@ export interface LobbyInfo {
 export type ClientMessage =
   | { type: 'claim'; seat: number; name: string; leaderName: string }
   | { type: 'release' }
-  | { type: 'configure'; seats: { name: string; leaderName: string; isBot: boolean }[]; setupMode: SetupMode; alwaysPromptReactions: boolean; seed?: string; mapId?: string; foodCapPerCity?: number; handLimit?: number }
+  | { type: 'configure'; seats: { name: string; leaderName: string; isBot: boolean }[]; setupMode: SetupMode; alwaysPromptReactions: boolean; seed?: string; mapId?: string; foodCapPerCity?: number; handLimit?: number; militaryMode?: MilitaryMode }
   | { type: 'start' }
   | { type: 'action'; action: Action }
   | { type: 'delegate'; playerId: string; bot: boolean }

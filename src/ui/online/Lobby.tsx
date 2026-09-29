@@ -22,7 +22,7 @@ export function Lobby({ lobby, send, connected, error, clearError, onLeave }: { 
   const [mode, setMode] = useState(lobby.setupMode);
   const [mapId, setMapId] = useState(lobby.mapId ?? 'quickstart');
   const [alwaysPrompt, setAlwaysPrompt] = useState(lobby.alwaysPromptReactions);
-  const [houseRules, setHouseRules] = useState<HouseRuleSettings>({ foodCapPerCity: lobby.foodCapPerCity ?? 0, handLimit: lobby.handLimit ?? 0 });
+  const [houseRules, setHouseRules] = useState<HouseRuleSettings>({ foodCapPerCity: lobby.foodCapPerCity ?? 0, handLimit: lobby.handLimit ?? 0, militaryMode: lobby.militaryMode ?? 'simultaneous' });
   const [seed, setSeed] = useState('');
   const [copied, setCopied] = useState(false);
   useEffect(() => {
@@ -30,7 +30,7 @@ export function Lobby({ lobby, send, connected, error, clearError, onLeave }: { 
     setMode(lobby.setupMode);
     setMapId(lobby.mapId ?? 'quickstart');
     setAlwaysPrompt(lobby.alwaysPromptReactions);
-    setHouseRules({ foodCapPerCity: lobby.foodCapPerCity ?? 0, handLimit: lobby.handLimit ?? 0 });
+    setHouseRules({ foodCapPerCity: lobby.foodCapPerCity ?? 0, handLimit: lobby.handLimit ?? 0, militaryMode: lobby.militaryMode ?? 'simultaneous' });
   }, [lobby]);
 
   const link = `${location.origin}${location.pathname}#room=${lobby.code}`;
@@ -178,6 +178,7 @@ export function Lobby({ lobby, send, connected, error, clearError, onLeave }: { 
           Waiting for the host to begin the game.
           {lobby.foodCapPerCity ? ` Food spoils above ${lobby.foodCapPerCity} per city held, +2 per city upgrade.` : ''}
           {lobby.handLimit ? ` Hand limit ${lobby.handLimit} cards.` : ''}
+          {lobby.militaryMode === 'sequential' ? ' Sequential military orders.' : ' Simultaneous military orders.'}
         </p>
       )}
       {error && (

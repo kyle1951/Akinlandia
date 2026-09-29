@@ -20,7 +20,8 @@ function taskMilitaryStart(state: GameState): void {
   popTask(state);
   state.phase = 'military';
   log(state, 'turn', 'The military phase begins. "War is too serious a matter to leave to soldiers."', { banner: true });
-  pushFront(state, { kind: 'military', subIdx: 0, allianceIdx: 0, started: false });
+  if (state.config.militaryMode === 'simultaneous') pushFront(state, { kind: 'simRound', idx: 0, started: false });
+  else pushFront(state, { kind: 'military', subIdx: 0, allianceIdx: 0, started: false });
 }
 
 function taskMilitary(state: GameState, task: Extract<Task, { kind: 'military' }>): void {
@@ -63,7 +64,7 @@ function taskMilitary(state: GameState, task: Extract<Task, { kind: 'military' }
 }
 
 export function subPhaseName(sub: string): string {
-  return { ships1: 'Ships 1', ships2: 'Ships 2', full1: 'Full 1', full2: 'Full 2' }[sub] ?? sub;
+  return { ships1: 'Ships 1', ships2: 'Ships 2', full1: 'Full 1', full2: 'Full 2', ships: 'Ships', full: 'Full' }[sub] ?? sub;
 }
 
 function actionPass(state: GameState, action: Extract<Action, { kind: 'pass' }>): void {
@@ -81,7 +82,7 @@ function actionScuttle(state: GameState, action: Extract<Action, { kind: 'scuttl
   }
 }
 
-function describeGroup(state: GameState, unitIds: UnitId[]): string {
+export function describeGroup(state: GameState, unitIds: UnitId[]): string {
   const soldiers = unitIds.filter((id) => state.units[id]?.kind === 'soldier').length;
   const ships = unitIds.filter((id) => state.units[id]?.kind === 'ship').length;
   const parts: string[] = [];
@@ -164,25 +165,7 @@ function taskExecuteOrder(state: GameState, task: Extract<Task, { kind: 'execute
     const units = g.unitIds.filter((id) => !refused.has(id) && state.units[id] && state.units[id].tileId === order.sourceTileId);
     const via = dests.get(g.destTileId)!.via;
     let moving: Unit[] = units.map((id) => state.units[id]);
-    if (via === 'sea') {
-      // Re-pair after refusals (decision 83): only as many pairs as both soldiers and ships allow.
-      const soldiers = moving.filter((u) => u.kind === 'soldier');
-      const ships = moving.filter((u) => u.kind === 'ship');
-      const n = Math.min(soldiers.length, ships.length);
-      const movingSoldiers = soldiers.slice(0, n);
-      const owners = movingSoldiers.map((s) => s.ownerId);
-      const chosenShips: Unit[] = [];
-      const pool = [...ships];
-      for (const o of owners) {
-        const idx = pool.findIndex((s) => s.ownerId === o);
-        if (idx >= 0) chosenShips.push(pool.splice(idx, 1)[0]);
-      }
-      while (chosenShips.length < n) chosenShips.push(pool.shift()!);
-      moving = [...movingSoldiers, ...chosenShips];
-      if (n < soldiers.length || n < ships.length) {
-        log(state, 'order', `Only ${n} manned ship pair(s) can sail to ${tLabel(state, g.destTileId)}; the rest stay in ${tLabel(state, order.sourceTileId)}.`);
-      }
-    }
+    if (via === 'sea') moving = pairForSea(state, moving, order.sourceTileId, g.destTileId);
     if (moving.filter((u) => u.kind === 'soldier').length === 0) {
       log(state, 'order', `No units move to ${tLabel(state, g.destTileId)}.`);
       continue;
@@ -245,7 +228,26 @@ function taskExecuteOrder(state: GameState, task: Extract<Task, { kind: 'execute
   pushFront(state, ...follow, ...combats);
 }
 
-function destroyEnemyFarmers(state: GameState, tileId: TileId, allianceId: AllianceId): void {
+/** Re-pair soldiers and ships after refusals (decision 83): only as many pairs as both allow. */
+export function pairForSea(state: GameState, units: Unit[], sourceTileId: TileId, destTileId: TileId): Unit[] {
+  const soldiers = units.filter((u) => u.kind === 'soldier');
+  const ships = units.filter((u) => u.kind === 'ship');
+  const n = Math.min(soldiers.length, ships.length);
+  const movingSoldiers = soldiers.slice(0, n);
+  const chosenShips: Unit[] = [];
+  const pool = [...ships];
+  for (const s of movingSoldiers) {
+    const idx = pool.findIndex((x) => x.ownerId === s.ownerId);
+    if (idx >= 0) chosenShips.push(pool.splice(idx, 1)[0]);
+  }
+  while (chosenShips.length < n) chosenShips.push(pool.shift()!);
+  if (n < soldiers.length || n < ships.length) {
+    log(state, 'order', `Only ${n} manned ship pair(s) can sail to ${tLabel(state, destTileId)}; the rest stay in ${tLabel(state, sourceTileId)}.`);
+  }
+  return [...movingSoldiers, ...chosenShips];
+}
+
+export function destroyEnemyFarmers(state: GameState, tileId: TileId, allianceId: AllianceId): void {
   for (const f of farmersOnTile(state, tileId)) {
     if (allianceOf(state, f.ownerId) === allianceId) continue;
     removeUnit(state, f.id);
@@ -271,7 +273,7 @@ function taskEnterTile(state: GameState, task: Extract<Task, { kind: 'enterTile'
  * (ruling 18): they pass to the General immediately so the tile never holds two
  * alliances, and the General then chooses which faction flies its flag.
  */
-function seizeShips(state: GameState, tileId: TileId, allianceId: AllianceId, generalId: PlayerId): Task | null {
+export function seizeShips(state: GameState, tileId: TileId, allianceId: AllianceId, generalId: PlayerId): Task | null {
   const ships = enemyShipsOnTile(state, tileId, allianceId);
   if (ships.length === 0) return null;
   for (const s of ships) {
