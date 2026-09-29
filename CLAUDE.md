@@ -61,7 +61,8 @@ npm run deploy     # vite build + wrangler deploy (needs `npx wrangler login` on
   export/import), `GameScreen` (layout, banners, reveal modal, privacy gating, end screen), `Board` (SVG
   hex map with pan/zoom and highlight callbacks), `DecisionPanel` (one component per decision kind),
   `SidePanel`, `SetupScreen`, `RulesPanel` (renders `docs/rules.md`), `EndScreen`, `ResolutionMap` (the
-  map shown after each simultaneous round).
+  map shown after each simultaneous round), `BattleScene` (replays a resolved big battle die by die from its
+  `CombatRecord`; presentation only, never touches the engine).
 - **Online play.** `src/engine/view.ts` builds the redacted per-player `ClientView` (other hands, deck,
   RNG, action log, task queue and other players' pending decisions removed). `server/roomLogic.ts` is the
   pure room state machine (lobby, claims, start, actions, delegation; rebuilds state by replaying the

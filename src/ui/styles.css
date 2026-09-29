@@ -611,3 +611,174 @@ select {
 .resolution-line.lost {
   color: var(--crimson);
 }
+
+/* Battle scene (presentation of a resolved battle) */
+.battle-backdrop {
+  background: rgba(10, 6, 3, 0.78);
+  z-index: 60;
+}
+.battle-scene {
+  background: linear-gradient(180deg, #2a1d12 0%, #3b2918 100%);
+  color: #f3e7cf;
+  border: 3px double #b8964f;
+  border-radius: 12px;
+  padding: 18px 22px;
+  width: min(980px, 96vw);
+  max-height: 92vh;
+  overflow-x: hidden;
+  overflow-y: auto;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
+}
+.battle-scene.shake {
+  animation: battle-shake 0.3s linear;
+}
+@keyframes battle-shake {
+  0%, 100% { transform: translate(0, 0); }
+  20% { transform: translate(-6px, 2px); }
+  40% { transform: translate(5px, -3px); }
+  60% { transform: translate(-4px, 3px); }
+  80% { transform: translate(3px, -1px); }
+}
+.battle-title {
+  font-size: 26px;
+  font-weight: bold;
+  letter-spacing: 0.05em;
+  text-align: center;
+}
+.battle-subtitle {
+  text-align: center;
+  font-size: 13px;
+  color: #d9c7a3;
+  margin: 4px 0 10px;
+}
+.battle-bar {
+  display: flex;
+  height: 12px;
+  border: 1px solid #b8964f;
+  border-radius: 6px;
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+.battle-bar > div {
+  transition: width 0.25s ease-out;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.35);
+}
+.battle-field {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 12px;
+  align-items: start;
+}
+.battle-vs {
+  font-size: 34px;
+  align-self: center;
+  color: #c0392b;
+}
+.battle-side-head {
+  border-bottom: 3px solid;
+  padding-bottom: 4px;
+  margin-bottom: 6px;
+}
+.battle-role {
+  font-size: 12px;
+  color: #d9c7a3;
+}
+.battle-odds {
+  font-size: 11px;
+  color: #bfae8b;
+}
+.battle-army {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  min-height: 34px;
+}
+.battle-soldier {
+  width: 26px;
+  height: 30px;
+  transition: opacity 0.3s, transform 0.3s;
+}
+.battle-soldier.fallen {
+  opacity: 0.45;
+  transform: rotate(-70deg) translateY(4px);
+}
+.battle-soldier.spent {
+  opacity: 0.4;
+}
+.battle-bonus {
+  font-size: 12px;
+  margin: 6px 0;
+  color: #f7d27a;
+  animation: battle-pop 0.5s ease-out;
+}
+.battle-dice {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 8px;
+  min-height: 40px;
+}
+.die {
+  width: 36px;
+  height: 36px;
+}
+.die rect {
+  fill: #f8f1e1;
+  stroke: #5a4128;
+  stroke-width: 4;
+}
+.die circle {
+  fill: #2a1d12;
+}
+.die.rolling {
+  animation: die-tumble 0.18s linear infinite;
+}
+.die.landed {
+  animation: battle-pop 0.25s ease-out;
+}
+.die.six rect {
+  fill: #c0392b;
+  stroke: #ffd98a;
+}
+.die.six circle {
+  fill: #fff;
+}
+@keyframes die-tumble {
+  0% { transform: rotate(0deg) scale(0.9); }
+  50% { transform: rotate(180deg) scale(1.05); }
+  100% { transform: rotate(360deg) scale(0.9); }
+}
+@keyframes battle-pop {
+  0% { transform: scale(1.35); }
+  100% { transform: scale(1); }
+}
+.battle-total {
+  font-size: 40px;
+  font-weight: bold;
+  text-align: center;
+  margin-top: 6px;
+}
+.battle-verdict {
+  text-align: center;
+  margin-top: 14px;
+  animation: battle-pop 0.5s ease-out;
+}
+.battle-headline {
+  font-size: 30px;
+  font-weight: bold;
+  letter-spacing: 0.06em;
+  color: #ffd98a;
+}
+.battle-chronicle {
+  font-style: italic;
+  color: #e6d5b1;
+  margin-top: 4px;
+}
+@media (max-width: 640px) {
+  .battle-field {
+    grid-template-columns: 1fr;
+  }
+  .battle-vs {
+    display: none;
+  }
+}

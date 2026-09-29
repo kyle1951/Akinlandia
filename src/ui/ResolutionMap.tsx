@@ -12,7 +12,7 @@ import type { BoardArrow, BoardMarker } from './Board';
  * round was resolved, with every march drawn as an arrow (solid: arrived,
  * dashed with a cross: beaten back, dotted: destroyed) and every battle marked.
  */
-export function ResolutionMap({ game, report, onClose }: { game: GameState; report: ResolutionReport; onClose: () => void }) {
+export function ResolutionMap({ game, report, onClose, onWatch }: { game: GameState; report: ResolutionReport; onClose: () => void; onWatch?: (combatId: string) => void }) {
   const snapshot = useMemo(() => {
     const units: Record<string, Unit> = {};
     for (const u of report.units) units[u.id] = u;
@@ -59,6 +59,11 @@ export function ResolutionMap({ game, report, onClose }: { game: GameState; repo
                 return (
                   <div key={b.combatId} className="resolution-line">
                     {where}: {allianceName(b.attackerAllianceId)} {b.attackerScore} vs {allianceName(b.defenderAllianceId)} {b.defenderScore}; {w} prevail{b.winner ? 's' : ''}. Losses {b.attackerLosses} / {b.defenderLosses}.
+                    {onWatch && game.turnData.combats[b.combatId] && (
+                      <button className="small" style={{ marginLeft: 6 }} onClick={() => onWatch(b.combatId)}>
+                        ▶ watch
+                      </button>
+                    )}
                   </div>
                 );
               })}

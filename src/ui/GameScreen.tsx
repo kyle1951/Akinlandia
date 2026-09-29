@@ -11,6 +11,8 @@ import { PrivacyScreen } from './PrivacyScreen';
 import { RulesPanel } from './RulesPanel';
 import { EndScreen } from './EndScreen';
 import { ResolutionMap } from './ResolutionMap';
+import { BattleScene, isBigBattle, snapshotBattle } from './BattleScene';
+import type { BattleSnapshot } from './BattleScene';
 import type { Controller } from './useGameController';
 
 export function GameScreen({ ctl }: { ctl: Controller }) {
@@ -26,6 +28,16 @@ export function GameScreen({ ctl }: { ctl: Controller }) {
   const resolutionKey = game.lastResolution ? `${game.lastResolution.turn}:${game.lastResolution.round}` : null;
   // a resolution already on the board when the screen opens (resume, reconnect) is not shown again
   const [seenResolution, setSeenResolution] = useState<string | null>(resolutionKey);
+  const [battleScenes, setBattleScenes] = useState(() => {
+    try {
+      return localStorage.getItem('akinlandia.battleScenes') !== 'off';
+    } catch {
+      return true;
+    }
+  });
+  const [battleQueue, setBattleQueue] = useState<BattleSnapshot[]>([]);
+  // battles already resolved when the screen opens (resume, reconnect) are not replayed
+  const seenCombats = useRef<Set<string>>(new Set(Object.values(game.turnData.combats ?? {}).filter((c) => c.resolved).map((c) => c.id)));
   const fileRef = useRef<HTMLInputElement>(null);
 
   const online = ctl.online;
@@ -33,8 +45,23 @@ export function GameScreen({ ctl }: { ctl: Controller }) {
   const decisionKey = pending ? `${game.log.length}:${pending.playerId}:${pending.kind}` : null;
   const humanTurn = online ? !!pending && pending.playerId === online.viewerId : !!pending && !game.players[pending.playerId].isBot;
   const hasHuman = !!online || game.seatOrder.some((p) => !game.players[p].isBot);
-  const showResolution = !!game.lastResolution && resolutionKey !== seenResolution && hasHuman && !ctl.running && ctl.speed !== 'instant';
-  const needsPrivacy = !online && humanTurn && pending && isPrivateDecision(pending) && unlocked !== decisionKey && !reveal && !showResolution;
+  const battle = battleQueue[0] ?? null;
+  const showResolution = !!game.lastResolution && resolutionKey !== seenResolution && hasHuman && !ctl.running && ctl.speed !== 'instant' && !battle;
+  const needsPrivacy = !online && humanTurn && pending && isPrivateDecision(pending) && unlocked !== decisionKey && !reveal && !showResolution && !battle;
+
+  // Big battles play out in the battle scene once the engine has resolved them (presentation only).
+  useEffect(() => {
+    const fresh = Object.values(game.turnData.combats ?? {}).filter((c) => c.resolved && !seenCombats.current.has(c.id));
+    if (fresh.length === 0) return;
+    for (const c of fresh) seenCombats.current.add(c.id);
+    if (!battleScenes || !hasHuman || ctl.running || ctl.speed === 'instant') return;
+    const big = fresh.filter((c) => isBigBattle(game, c));
+    if (big.length) setBattleQueue((q) => [...q, ...big.map((c) => snapshotBattle(game, c))]);
+  }, [game, battleScenes, hasHuman, ctl.running, ctl.speed]);
+  const watchBattle = (combatId: string) => {
+    const c = game.turnData.combats[combatId];
+    if (c) setBattleQueue((q) => [...q, snapshotBattle(game, c)]);
+  };
 
   // Banners for FINAL ORDERs and battles; reveal modal for politics.
   useEffect(() => {
@@ -181,6 +208,22 @@ export function GameScreen({ ctl }: { ctl: Controller }) {
           <label className="status">
             <input type="checkbox" checked={showCoords} onChange={(e) => setShowCoords(e.target.checked)} /> coords
           </label>
+          <label className="status" title="Play out big battles (cities, or six or more soldiers) with dice, one at a time">
+            <input
+              type="checkbox"
+              checked={battleScenes}
+              onChange={(e) => {
+                setBattleScenes(e.target.checked);
+                if (!e.target.checked) setBattleQueue([]);
+                try {
+                  localStorage.setItem('akinlandia.battleScenes', e.target.checked ? 'on' : 'off');
+                } catch {
+                  // ignore
+                }
+              }}
+            />{' '}
+            battle scenes
+          </label>
           {online ? (
             <button onClick={online.leave}>Leave the table</button>
           ) : (
@@ -208,7 +251,7 @@ export function GameScreen({ ctl }: { ctl: Controller }) {
         )}
       </div>
       <div className="side">
-        {pending && humanTurn && !needsPrivacy && !reveal && !showResolution && !ctl.running && <DecisionPanel game={game} pending={pending} dispatch={ctl.dispatch} setBoard={setBoard} />}
+        {pending && humanTurn && !needsPrivacy && !reveal && !showResolution && !battle && !ctl.running && <DecisionPanel game={game} pending={pending} dispatch={ctl.dispatch} setBoard={setBoard} />}
         {!online && pending && !humanTurn && !isGameOver(game) && (
           <div className="decision">
             <PlayerSwatch game={game} pid={pending.playerId} />
@@ -240,7 +283,8 @@ export function GameScreen({ ctl }: { ctl: Controller }) {
       {needsPrivacy && pending && <PrivacyScreen name={game.players[pending.playerId].leaderName} what={privateWhat(pending)} onContinue={() => setUnlocked(decisionKey)} />}
       {rules && <RulesPanel onClose={() => setRules(false)} />}
       {revealView}
-      {showResolution && game.lastResolution && <ResolutionMap game={game} report={game.lastResolution} onClose={() => setSeenResolution(resolutionKey)} />}
+      {showResolution && game.lastResolution && <ResolutionMap game={game} report={game.lastResolution} onClose={() => setSeenResolution(resolutionKey)} onWatch={watchBattle} />}
+      {battle && <BattleScene key={`${battle.combat.id}:${battleQueue.length}`} game={game} snapshot={battle} onClose={() => setBattleQueue((q) => q.slice(1))} />}
       {isGameOver(game) && showEnd && game.result && <EndScreen game={game} onNewGame={online ? online.leave : ctl.quit} onClose={() => setShowEnd(false)} />}
     </div>
   );

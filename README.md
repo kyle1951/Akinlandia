@@ -42,6 +42,10 @@ failing seed and prints the state around the failing action.
 3. **Hotseat play.** The game is played on one device. Whenever a decision is private (the allocation sheet,
    the PLAY/RETAIN envelopes, a reaction window) a "Pass the device to ..." screen appears first. Every other
    decision is public and appears in the panel on the right; the board highlights legal targets in gold.
+   Big battles (any fight over a city, or six or more soldiers) play out in a battle scene: the dice land one
+   at a time, sixes strike soldiers down, the defenders' bonus is added and a verdict is announced. It only
+   replays the engine's result, can be skipped, can be switched off with "battle scenes" in the top bar, and
+   any battle on the resolution map can be watched again.
 4. **Saving.** The game autosaves to the browser after every action and offers to resume on reload. "Export
    save" downloads the state as JSON and "Import save" loads one.
 
