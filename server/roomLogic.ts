@@ -117,7 +117,7 @@ export class Room {
       foodCapPerCity: this.record.foodCapPerCity ?? 0,
       handLimit: this.record.handLimit ?? 0,
       militaryMode: this.record.militaryMode ?? 'simultaneous',
-      hitOn: this.record.hitOn ?? 4,
+      hitOn: this.record.hitOn ?? 6,
       hostIsYou: !!token && this.record.hostToken === token,
       mySeat: mySeat >= 0 ? mySeat : null,
       playersOnline,
@@ -205,7 +205,7 @@ export class Room {
     this.record.foodCapPerCity = small(msg.foodCapPerCity);
     this.record.handLimit = small(msg.handLimit);
     this.record.militaryMode = msg.militaryMode === 'sequential' ? 'sequential' : 'simultaneous';
-    this.record.hitOn = msg.hitOn === 6 ? 6 : 4;
+    this.record.hitOn = msg.hitOn === 4 ? 4 : 6;
     this.record.seedText = (msg.seed ?? '').slice(0, 64);
     return { rows: [], recordChanged: true };
   }
@@ -227,7 +227,7 @@ export class Room {
       foodCapPerCity: this.record.foodCapPerCity ?? 0,
       handLimit: this.record.handLimit ?? 0,
       militaryMode: this.record.militaryMode ?? 'simultaneous',
-      hitOn: this.record.hitOn ?? 4,
+      hitOn: this.record.hitOn ?? 6,
     };
     this.record.config = config;
     this.record.seed = seed;

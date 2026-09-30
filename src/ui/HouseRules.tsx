@@ -9,7 +9,7 @@ export interface HouseRuleSettings {
   hitOn: number;
 }
 
-export const NO_HOUSE_RULES: HouseRuleSettings = { foodCapPerCity: 0, handLimit: 0, militaryMode: 'simultaneous', hitOn: 4 };
+export const NO_HOUSE_RULES: HouseRuleSettings = { foodCapPerCity: 0, handLimit: 0, militaryMode: 'simultaneous', hitOn: 6 };
 const DEFAULT_FOOD_CAP = 4;
 const DEFAULT_HAND_LIMIT = 7;
 
@@ -27,8 +27,8 @@ export function HouseRuleOptions({ value, onChange }: { value: HouseRuleSettings
       <label>
         Combat:{' '}
         <select value={value.hitOn} onChange={(e) => onChange({ ...value, hitOn: Number(e.target.value) })}>
-          <option value={4}>every 4, 5 or 6 rolled kills an enemy soldier</option>
           <option value={6}>only a 6 kills an enemy soldier, as in the rules</option>
+          <option value={4}>variant: every 4, 5 or 6 rolled kills an enemy soldier</option>
         </select>
       </label>
       <label>

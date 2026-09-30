@@ -23,7 +23,7 @@ export function Lobby({ lobby, send, connected, error, clearError, onLeave }: { 
   const [mode, setMode] = useState(lobby.setupMode);
   const [mapId, setMapId] = useState(lobby.mapId ?? 'quickstart');
   const [alwaysPrompt, setAlwaysPrompt] = useState(lobby.alwaysPromptReactions);
-  const [houseRules, setHouseRules] = useState<HouseRuleSettings>({ foodCapPerCity: lobby.foodCapPerCity ?? 0, handLimit: lobby.handLimit ?? 0, militaryMode: lobby.militaryMode ?? 'simultaneous', hitOn: lobby.hitOn ?? 4 });
+  const [houseRules, setHouseRules] = useState<HouseRuleSettings>({ foodCapPerCity: lobby.foodCapPerCity ?? 0, handLimit: lobby.handLimit ?? 0, militaryMode: lobby.militaryMode ?? 'simultaneous', hitOn: lobby.hitOn ?? 6 });
   const [seed, setSeed] = useState('');
   const [copied, setCopied] = useState(false);
   useEffect(() => {
@@ -31,7 +31,7 @@ export function Lobby({ lobby, send, connected, error, clearError, onLeave }: { 
     setMode(lobby.setupMode);
     setMapId(lobby.mapId ?? 'quickstart');
     setAlwaysPrompt(lobby.alwaysPromptReactions);
-    setHouseRules({ foodCapPerCity: lobby.foodCapPerCity ?? 0, handLimit: lobby.handLimit ?? 0, militaryMode: lobby.militaryMode ?? 'simultaneous', hitOn: lobby.hitOn ?? 4 });
+    setHouseRules({ foodCapPerCity: lobby.foodCapPerCity ?? 0, handLimit: lobby.handLimit ?? 0, militaryMode: lobby.militaryMode ?? 'simultaneous', hitOn: lobby.hitOn ?? 6 });
   }, [lobby]);
 
   const link = `${location.origin}${location.pathname}#room=${lobby.code}`;

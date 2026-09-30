@@ -11,7 +11,7 @@ export interface DiceResult {
   hits: number;
 }
 
-/** The lowest die that kills an enemy soldier: 6 in the rules document, 4 by default in new games (decision 115). */
+/** The lowest die that kills an enemy soldier: 6 as in the rules document (the default), 4 in the bloody variant (decision 115). */
 export function hitOn(state: Pick<GameState, 'config'>): number {
   return state.config.hitOn ?? 6;
 }
