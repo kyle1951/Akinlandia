@@ -6,6 +6,11 @@
  * Nine nations in three teams of three, traced from the campus map and its
  * neighbourhood (the Villages to the west, the Botanic Garden to the north):
  *   Black = CMS: CMC (royal), Harvey Mudd, Scripps
+ *
+ * As on campus: Mudd across the north; Scripps (west) and Pitzer (east) below it,
+ * north of 9th Street; CMC in the band south of both, the eastern-most nation;
+ * the Consortium and Pomona North to CMC's west; Pomona South along the south;
+ * KGI and the School of Theology south-east, below CMC's fields.
  *   White = the Sagehens: Pomona North Campus (royal), Pomona South Campus, Pitzer
  *   Green = the Grad Schools: CGU (royal), KGI with the School of Theology, the Consortium
  *
@@ -14,7 +19,7 @@
  * from every other nation's) and nine are contested (equally far from two
  * nations of different teams, farther from everyone else: three for each pair
  * of teams, two for each nation). The generator places the open cities by
- * those rules and fails loudly when it cannot. Every nation has four wheat and
+ * those rules and fails loudly when it cannot. Every nation has three wheat and
  * three raw-material tiles that only its own farmers can reach; other ground is
  * barren apart from the fields each open city needs.
  *
@@ -28,19 +33,19 @@ import { hexDistance, tileId } from '../src/engine/hex';
 
 const TERRAIN = [
   '......nnnnnn......',
-  '......GGMMMMMMZZZZ',
-  '......GGMMMMMMZZZZ',
-  '......GGSSSSSSZZZZ',
-  '......GGSSSSSSZZZn',
-  '......GGUSSSSSZZnn',
-  '..vv..GGUUCCCCCCnn',
-  '.vvv..UUUUnCCCCCnn',
-  'vvvvNNUUUNnCCCCKKK',
-  'vvvvNNNNNNNnCnKKKK',
-  'vvvvNNNNNNnnnnKKKK',
-  'vvvvPPPPPPnnnnK.K.',
-  'vvvvPPPPPPPPPP....',
-  '.vvvPPPPPPPPPP....',
+  '....GGGGMMMMMMMMZZ',
+  '....GGGGMMMMMMMMZZ',
+  '....GGGGSSSSSZZZZZ',
+  '....GGGGSSSSSZZZZZ',
+  '....GGGGSSSSSZZZZZ',
+  '..vv..GGUSSSSZZZZZ',
+  '.vvv..UUUUCCCCCCCC',
+  'vvvvNNUUUNCCCCCCCC',
+  'vvvvNNNNNNnCCCCCCC',
+  'vvvvNNNNNNnnnCCCCC',
+  'vvvvPPPPPPnnKKKKC.',
+  'vvvvPPPPPPPPKKKK..',
+  '.vvvPPPPPPPPKKKK..',
   '..vvPPPPPPPPPP....',
   '....P.P.P.P.P.P...',
 ];
@@ -64,14 +69,14 @@ interface NationDef {
 
 // names from the table (2026-09-30); the Grad Schools' in the same spirit
 const NATIONS: Record<Nation, NationDef> = {
-  C: { slot: 'black-purple', team: 'black', college: 'CMC', name: 'North Quad Networkers', color: '#8a1538', tint: '#cfa3a8', royal: true, starts: [[11, 7, 'North Quad'], [14, 7, 'Collins']], grab: 'The Athenaeum' },
-  M: { slot: 'black-orange', team: 'black', college: 'Harvey Mudd', name: 'Grinders of Galileo', color: '#e0a100', tint: '#e9d596', royal: false, starts: [[10, 1, 'Galileo Hall'], [12, 1, 'Hixon Court']], grab: 'The Mall' },
-  S: { slot: 'black-gold', team: 'black', college: 'Scripps', name: 'Feelers of Fowler', color: '#3f7f5f', tint: '#a9ccb4', royal: false, starts: [[10, 5, 'Seal Court'], [12, 4, 'Denison Library']], grab: 'Fowler Garden' },
+  C: { slot: 'black-purple', team: 'black', college: 'CMC', name: 'North Quad Networkers', color: '#8a1538', tint: '#cfa3a8', royal: true, starts: [[15, 7, 'North Quad'], [12, 8, 'Collins']], grab: 'The Athenaeum' },
+  M: { slot: 'black-orange', team: 'black', college: 'Harvey Mudd', name: 'Grinders of Galileo', color: '#e0a100', tint: '#e9d596', royal: false, starts: [[9, 1, 'Galileo Hall'], [13, 1, 'Hixon Court']], grab: 'The Mall' },
+  S: { slot: 'black-gold', team: 'black', college: 'Scripps', name: 'Feelers of Fowler', color: '#3f7f5f', tint: '#a9ccb4', royal: false, starts: [[11, 5, 'Seal Court'], [9, 4, 'Denison Library']], grab: 'Fowler Garden' },
   N: { slot: 'white-purple', team: 'white', college: 'Pomona North Campus', name: 'The Frary Feast', color: '#1f4e9c', tint: '#a8bfdf', royal: true, starts: [[7, 10, 'Frary'], [9, 10, 'Walker Beach']], grab: 'Smith Campus Center' },
-  P: { slot: 'white-crimson', team: 'white', college: 'Pomona South Campus', name: 'Monologuers of Marston', color: '#4aa3df', tint: '#c9dbf0', royal: false, starts: [[5, 13, 'Frank'], [9, 14, 'Oldenborg']], grab: 'Marston Quad' },
-  Z: { slot: 'white-azure', team: 'white', college: 'Pitzer', name: 'Munchers of Mound', color: '#f47b20', tint: '#f3c49a', royal: false, starts: [[15, 2, 'Grove House'], [17, 3, 'Mead Hall']], grab: 'The Mounds' },
-  G: { slot: 'green-purple', team: 'green', college: 'CGU', name: 'Dissertators of Drucker', color: '#c8102e', tint: '#e8aaa8', royal: true, starts: [[6, 2, 'Harper Hall'], [7, 4, 'Stauffer Hall']], grab: 'Drucker School' },
-  K: { slot: 'green-rose', team: 'green', college: 'KGI and Claremont School of Theology', name: 'Pipette Priests of Kresge', color: '#1b8a84', tint: '#a9d6d3', royal: false, starts: [[16, 9, 'Riggs School'], [14, 11, 'Kresge Chapel']], grab: 'Theology Library' },
+  P: { slot: 'white-crimson', team: 'white', college: 'Pomona South Campus', name: 'Monologuers of Marston', color: '#4aa3df', tint: '#c9dbf0', royal: false, starts: [[6, 13, 'Frank'], [10, 13, 'Oldenborg']], grab: 'Marston Quad' },
+  Z: { slot: 'white-azure', team: 'white', college: 'Pitzer', name: 'Munchers of Mound', color: '#f47b20', tint: '#f3c49a', royal: false, starts: [[16, 3, 'Grove House'], [14, 5, 'Mead Hall']], grab: 'The Mounds' },
+  G: { slot: 'green-purple', team: 'green', college: 'CGU', name: 'Dissertators of Drucker', color: '#c8102e', tint: '#e8aaa8', royal: true, starts: [[6, 2, 'Harper Hall'], [6, 5, 'Stauffer Hall']], grab: 'Drucker School' },
+  K: { slot: 'green-rose', team: 'green', college: 'KGI and Claremont School of Theology', name: 'Pipette Priests of Kresge', color: '#1b8a84', tint: '#a9d6d3', royal: false, starts: [[14, 12, 'Riggs School'], [12, 12, 'Kresge Chapel']], grab: 'Theology Library' },
   U: { slot: 'green-teal', team: 'green', college: 'the Claremont University Consortium', name: 'Hushers of Honnold', color: '#6a3d9a', tint: '#cdb9e2', royal: false, starts: [[8, 7, 'Honnold Library'], [5, 8, 'Huntley Bookstore']], grab: 'The Old Village' },
 };
 
@@ -85,7 +90,7 @@ const CONTESTED: [Nation, Nation, string][] = [
   ['C', 'K', 'Roberts Pavilion'],
   ['N', 'U', '21 Choices'],
   ['P', 'U', 'The New Village'],
-  ['P', 'K', 'Merritt Field'],
+  ['P', 'K', 'Strehle Track'],
 ];
 
 const VILLAGE_TINT = '#d9d0bf';
@@ -213,7 +218,7 @@ function spread(pool: string[], count: number, kind: 'wheat' | 'raw') {
     else addRaw(best);
   }
 }
-const PRIVATE_WHEAT = Number(process.env.WHEAT ?? 4);
+const PRIVATE_WHEAT = Number(process.env.WHEAT ?? 3);
 const PRIVATE_RAW = Number(process.env.RAW ?? 3);
 // 1. each open city gets two wheat and one raw (decision 101), from ground no nation holds alone
 //    (failing that, from the private ground of the nation or nations it lies between, which counts toward their totals)
