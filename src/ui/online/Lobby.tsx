@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import type { ClientMessage, LobbyInfo } from '../../../server/protocol';
 import { MAPS } from '../../data/quickstartMap';
 import { HouseRuleOptions } from '../HouseRules';
+import { resuggest } from '../leaderNames';
 import type { HouseRuleSettings } from '../HouseRules';
 
 const NAME_KEY = 'akinlandia.player.name';
@@ -147,7 +148,14 @@ export function Lobby({ lobby, send, connected, error, clearError, onLeave }: { 
           </table>
           <label>
             <input type="radio" checked={mode === 'quick'} onChange={() => setMode('quick')} /> Quick Start map:{' '}
-            <select value={mapId} onChange={(e) => setMapId(e.target.value)}>
+            <select
+              value={mapId}
+              onChange={(e) => {
+                setMapId(e.target.value);
+                // claimed seats keep their leader's own name
+                setSeats((s) => resuggest(s, e.target.value, (i) => !!lobby.seats[i]?.taken));
+              }}
+            >
               {Object.entries(MAPS).map(([id, m]) => (
                 <option key={id} value={id}>
                   {m.spec.name}

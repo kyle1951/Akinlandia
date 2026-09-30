@@ -132,6 +132,8 @@ export interface PresetMap {
   factions?: FactionDef[];
   /** most leaders the map has starting cities for */
   maxPlayers?: number;
+  /** silly leader names suggested for the seats when this map is chosen */
+  leaderNames?: string[];
 }
 
 export const MAPS: Record<string, PresetMap> = {
@@ -143,5 +145,7 @@ export const MAPS: Record<string, PresetMap> = {
     slots: CLAREMONT_SLOTS,
     description: 'The Claremont Colleges: nine nations in three teams. CMS (North Quad Networkers, Grinders of Galileo, Feelers of Fowler), the Sagehens (The Frary Feast, Monologuers of Marston, Munchers of Mound) and the Grad Schools (Dissertators of Drucker, Pipette Priests of Kresge, Hushers of Honnold). Every nation has a city to grab on the first turn and two to fight over, out to the Villages and 21 Choices. Landlocked: no ships.',
     factions: CLAREMONT_FACTIONS,
+    // the table's other nation-name ideas, as leader names (2026-09-30)
+    leaderNames: ['The Ambition of the Athenaeum', 'Crusaders of Collins', 'Hixon Hermits', 'Martyrs of Mall', 'The Sensitive of Seal', 'The Grievers of Green', 'Bridges Brigade', 'The Guilt of Grove', 'Moralizers of Mead'],
   },
 };

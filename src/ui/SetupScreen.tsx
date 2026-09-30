@@ -3,9 +3,9 @@ import type { GameConfig } from '../engine/types';
 import { hashSeed } from '../engine/rng';
 import { MAPS } from '../data/quickstartMap';
 import { HouseRuleOptions, NO_HOUSE_RULES } from './HouseRules';
+import { resuggest, suggestedLeaderName } from './leaderNames';
 
 const DEFAULT_NAMES = ['Sinclair', 'Akin', 'Hobbes', 'Herodotus', 'Clemenceau', 'Pericles', 'Xerxes', 'Leonidas', 'Solon'];
-const EPITHETS = ['the Great', 'the Adequate', 'the Unready', 'the Magnificent', 'the Verbose', 'the Bald', 'the Younger', 'the Pious', 'the Tardy'];
 
 interface Seat {
   name: string;
@@ -15,7 +15,7 @@ interface Seat {
 
 export function SetupScreen(props: { onStart: (config: GameConfig, seed: number) => void; onImport: (text: string) => string | null; hasSave: boolean; onResume: () => void; onOnline?: () => void }) {
   const [count, setCount] = useState(5);
-  const [seats, setSeats] = useState<Seat[]>(() => DEFAULT_NAMES.map((n, i) => ({ name: n, leaderName: `${n} ${EPITHETS[i]}`, isBot: i > 0 })));
+  const [seats, setSeats] = useState<Seat[]>(() => DEFAULT_NAMES.map((n, i) => ({ name: n, leaderName: suggestedLeaderName('quickstart', i, n), isBot: i > 0 })));
   const [mode, setMode] = useState<'quick' | 'full'>('quick');
   const [mapId, setMapId] = useState('quickstart');
   const [alwaysPrompt, setAlwaysPrompt] = useState(false);
@@ -121,7 +121,13 @@ export function SetupScreen(props: { onStart: (config: GameConfig, seed: number)
         {mode === 'quick' && (
           <label style={{ marginLeft: 24 }}>
             Map:{' '}
-            <select value={mapId} onChange={(e) => setMapId(e.target.value)}>
+            <select
+              value={mapId}
+              onChange={(e) => {
+                setMapId(e.target.value);
+                setSeats((s) => resuggest(s, e.target.value));
+              }}
+            >
               {Object.entries(MAPS).map(([id, m]) => (
                 <option key={id} value={id}>
                   {m.spec.name}
