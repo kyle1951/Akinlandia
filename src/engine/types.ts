@@ -556,6 +556,8 @@ export interface GameConfig {
   mapId: string;
   /** absent = 'sequential', so saves and online tables from before decision 109 replay unchanged */
   militaryMode?: MilitaryMode;
+  /** decision 115: a die showing this or more kills an enemy soldier; absent = 6 (the rules document), so older games replay unchanged */
+  hitOn?: number;
   /** house rule (decision 107): after feeding, stored food above this many per city held spoils; 0 or absent = no cap */
   foodCapPerCity?: number;
   /** house rule (decision 108): at the end of each turn a leader holding more cards discards down to it; 0 or absent = no limit */

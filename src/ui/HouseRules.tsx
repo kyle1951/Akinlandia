@@ -5,9 +5,11 @@ export interface HouseRuleSettings {
   foodCapPerCity: number;
   handLimit: number;
   militaryMode: MilitaryMode;
+  /** decision 115: the lowest die that kills */
+  hitOn: number;
 }
 
-export const NO_HOUSE_RULES: HouseRuleSettings = { foodCapPerCity: 0, handLimit: 0, militaryMode: 'simultaneous' };
+export const NO_HOUSE_RULES: HouseRuleSettings = { foodCapPerCity: 0, handLimit: 0, militaryMode: 'simultaneous', hitOn: 4 };
 const DEFAULT_FOOD_CAP = 4;
 const DEFAULT_HAND_LIMIT = 7;
 
@@ -20,6 +22,13 @@ export function HouseRuleOptions({ value, onChange }: { value: HouseRuleSettings
         <select value={value.militaryMode} onChange={(e) => onChange({ ...value, militaryMode: e.target.value as MilitaryMode })}>
           <option value="simultaneous">Simultaneous: Generals write secret orders, then everything resolves at once</option>
           <option value="sequential">Sequential: one order at a time in alliance order, as in the rules</option>
+        </select>
+      </label>
+      <label>
+        Combat:{' '}
+        <select value={value.hitOn} onChange={(e) => onChange({ ...value, hitOn: Number(e.target.value) })}>
+          <option value={4}>every 4, 5 or 6 rolled kills an enemy soldier</option>
+          <option value={6}>only a 6 kills an enemy soldier, as in the rules</option>
         </select>
       </label>
       <label>

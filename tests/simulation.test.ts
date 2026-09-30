@@ -5,7 +5,8 @@ import { runBotGame, SimulationError } from '../src/bots/runner';
  * 200 all-bot games with different seeds and player counts (3-9), invariants
  * checked after every action. A failure prints the seed and action index so
  * it can be replayed with `npx vite-node scripts/debug.ts <seed>`. Odd seeds use
- * simultaneous military orders (decision 109), even seeds the sequential rules.
+ * simultaneous military orders (decision 109), even seeds the sequential rules;
+ * seeds divisible by three kill on 4, 5 or 6 (decision 115), the others only on 6.
  * Split into chunks so the vitest worker can report progress between them.
  */
 const GAMES = Number(process.env.SIM_GAMES ?? 200);
@@ -25,7 +26,7 @@ describe('simulation harness', () => {
         await new Promise((r) => setTimeout(r, 0));
         const players = 3 + ((seed - START) % 7);
         try {
-          const s = runBotGame(seed, players, { checkInvariants: true, config: { militaryMode: seed % 2 ? 'simultaneous' : 'sequential' } });
+          const s = runBotGame(seed, players, { checkInvariants: true, config: { militaryMode: seed % 2 ? 'simultaneous' : 'sequential', ...(seed % 3 === 0 ? { hitOn: 4 } : {}) } });
           expect(s.phase).toBe('gameOver');
           expect(s.result).not.toBeNull();
           expect(s.pending).toBeNull();

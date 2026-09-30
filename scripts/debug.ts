@@ -4,7 +4,7 @@ import { unitsOnTile } from '../src/engine/query';
 const seed = Number(process.argv[2] ?? 4);
 const players = 3 + (seed % 7);
 // the simulation test plays odd seeds with simultaneous orders (decision 109)
-const config = { militaryMode: seed % 2 ? ('simultaneous' as const) : ('sequential' as const) };
+const config = { militaryMode: seed % 2 ? ('simultaneous' as const) : ('sequential' as const), ...(seed % 3 === 0 ? { hitOn: 4 } : {}) };
 const tileOfInterest = process.argv[3];
 try {
   runBotGame(seed, players, { checkInvariants: true, config });

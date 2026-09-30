@@ -384,8 +384,8 @@ function taskCombat(state: GameState, task: Extract<Task, { kind: 'combat' }>): 
   }
   const att = rollSide(state, c.attacker, false, c.tileId);
   const def = rollSide(state, c.defender, true, c.tileId);
-  c.attacker.hitsTaken = def.sixes;
-  c.defender.hitsTaken = att.sixes;
+  c.attacker.hitsTaken = def.hits;
+  c.defender.hitsTaken = att.hits;
   log(state, 'combat', `Attacker: ${att.explanation}.`, { combatId: c.id, side: 'attacker', dice: c.attacker.dice });
   log(state, 'combat', `Defender: ${def.explanation}.`, { combatId: c.id, side: 'defender', dice: c.defender.dice });
   pushFront(state, { kind: 'casualties', combatId: c.id, side: 'attacker' }, { kind: 'casualties', combatId: c.id, side: 'defender' }, { kind: 'combatOutcome', combatId: c.id });

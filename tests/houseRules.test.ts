@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { cityCount, citiesOf, foodCapOf } from '../src/engine/query';
 import { applyAction, advance } from '../src/engine/machine';
 import { runBotGame } from '../src/bots/runner';
-import { act, addUnit, clearUnits, giveCard, logHas, newGame, playerOf, runUntil } from './helpers';
+import { rollDice } from '../src/engine/rules/combat';
+import { act, addUnit, clearUnits, giveCard, logHas, newGame, playerOf, runUntil, setRolls } from './helpers';
 import type { GameState } from '../src/engine/types';
 
 function jumpToReconcile(s: GameState): void {
@@ -95,6 +96,27 @@ describe('house rule: hand limit (decision 108)', () => {
       });
       expect(end.phase).toBe('gameOver');
       expect(discards).toBeGreaterThan(0);
+    }
+  });
+});
+
+describe('combat hits (decision 115)', () => {
+  it('kills on 4, 5 or 6 when the game says so, and only on 6 otherwise', () => {
+    const bloody = newGame(3, 1, { hitOn: 4 });
+    setRolls(bloody, [4, 3, 6, 5, 1]);
+    expect(rollDice(bloody, 5).hits).toBe(3);
+    const classic = newGame(3, 1);
+    setRolls(classic, [4, 3, 6, 5, 1]);
+    expect(rollDice(classic, 5).hits).toBe(1);
+  });
+
+  it('bot games with bloody combat finish with every invariant holding', () => {
+    for (const [seed, players, militaryMode] of [
+      [41, 5, 'simultaneous'],
+      [42, 9, 'sequential'],
+    ] as const) {
+      const end = runBotGame(seed, players, { config: { hitOn: 4, militaryMode }, checkInvariants: true });
+      expect(end.phase).toBe('gameOver');
     }
   });
 });

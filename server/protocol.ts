@@ -23,6 +23,7 @@ export interface LobbyInfo {
   foodCapPerCity: number;
   handLimit: number;
   militaryMode: MilitaryMode;
+  hitOn: number;
   hostIsYou: boolean;
   mySeat: number | null;
   playersOnline: number;
@@ -31,7 +32,7 @@ export interface LobbyInfo {
 export type ClientMessage =
   | { type: 'claim'; seat: number; name: string; leaderName: string }
   | { type: 'release' }
-  | { type: 'configure'; seats: { name: string; leaderName: string; isBot: boolean }[]; setupMode: SetupMode; alwaysPromptReactions: boolean; seed?: string; mapId?: string; foodCapPerCity?: number; handLimit?: number; militaryMode?: MilitaryMode }
+  | { type: 'configure'; seats: { name: string; leaderName: string; isBot: boolean }[]; setupMode: SetupMode; alwaysPromptReactions: boolean; seed?: string; mapId?: string; foodCapPerCity?: number; handLimit?: number; militaryMode?: MilitaryMode; hitOn?: number }
   | { type: 'start' }
   | { type: 'action'; action: Action }
   | { type: 'delegate'; playerId: string; bot: boolean }

@@ -33,7 +33,8 @@ failing seed and prints the state around the failing action.
 1. **Setup screen.** Choose 3 to 9 seats, name each leader (and give them a silly leader name for the order
    announcements), and mark each seat human or bot. Pick Quick Start (a preset map: the designed board, the
    photographed Table of 2026, Eurasia, or the Claremont Colleges: nine nations in three teams, out to the Villages) or Full Game (build the map tile by tile), optionally turn on "Always prompt every eligible player" at reaction windows or the
-   optional house rules (food spoils above a cap per city held; a hand limit of 7 cards), choose
+   optional house rules (food spoils above a cap per city held; a hand limit of 7 cards), pick how
+   bloody combat is (by default every 4, 5 or 6 rolled kills an enemy soldier; or only 6s, as in the rules), choose
    simultaneous (the default: Generals write secret orders, then everything resolves at once and a
    resolution map shows what happened) or sequential military orders, and set a
    seed if you want a reproducible game. An all-bot game can be watched at any speed or run to the end.

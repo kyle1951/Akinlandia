@@ -7,20 +7,27 @@ import { destinationsFrom } from './movement';
 export interface DiceResult {
   dice: number[];
   total: number;
-  sixes: number;
+  /** dice that kill an enemy soldier */
+  hits: number;
+}
+
+/** The lowest die that kills an enemy soldier: 6 in the rules document, 4 by default in new games (decision 115). */
+export function hitOn(state: Pick<GameState, 'config'>): number {
+  return state.config.hitOn ?? 6;
 }
 
 export function rollDice(state: GameState, n: number): DiceResult {
   const dice: number[] = [];
   let total = 0;
-  let sixes = 0;
+  let hits = 0;
+  const min = hitOn(state);
   for (let i = 0; i < n; i++) {
     const d = rollD6(state.rng);
     dice.push(d);
     total += d;
-    if (d === 6) sixes++;
+    if (d >= min) hits++;
   }
-  return { dice, total, sixes };
+  return { dice, total, hits };
 }
 
 /**
@@ -43,7 +50,7 @@ export function defenderBonusPerSoldier(state: GameState, tileId: TileId): { per
 }
 
 /** Roll for one side. Spent soldiers roll nothing and add nothing. */
-export function rollSide(state: GameState, side: CombatSide, isDefender: boolean, tileId: TileId): { sixes: number; explanation: string } {
+export function rollSide(state: GameState, side: CombatSide, isDefender: boolean, tileId: TileId): { hits: number; explanation: string } {
   const active = side.soldierIds.filter((id) => !state.units[id].spent);
   const res = rollDice(state, active.length);
   side.dice = res.dice;
@@ -57,8 +64,8 @@ export function rollSide(state: GameState, side: CombatSide, isDefender: boolean
   }
   side.bonus = bonus;
   side.score = res.total + bonus;
-  expl += ` -> score ${side.score}, ${res.sixes} hit(s) inflicted`;
-  return { sixes: res.sixes, explanation: expl };
+  expl += ` -> score ${side.score}, ${res.hits} hit(s) inflicted`;
+  return { hits: res.hits, explanation: expl };
 }
 
 /**

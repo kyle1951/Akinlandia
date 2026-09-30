@@ -271,8 +271,8 @@ function taskFieldBattle(state: GameState, task: Extract<Task, { kind: 'fieldBat
   const c = state.turnData.combats[task.combatId];
   const att = rollSide(state, c.attacker, false, c.tileId);
   const def = rollSide(state, c.defender, false, c.tileId);
-  c.attacker.hitsTaken = def.sixes;
-  c.defender.hitsTaken = att.sixes;
+  c.attacker.hitsTaken = def.hits;
+  c.defender.hitsTaken = att.hits;
   const what = c.mode === 'border' ? 'Border clash' : `Contest for ${tLabel(state, c.tileId)}`;
   log(state, 'combat', `${what}: ${allianceName(c.attacker.allianceId)} ${att.explanation}.`, { combatId: c.id, side: 'attacker', dice: c.attacker.dice });
   log(state, 'combat', `${what}: ${allianceName(c.defender.allianceId)} ${def.explanation}.`, { combatId: c.id, side: 'defender', dice: c.defender.dice });

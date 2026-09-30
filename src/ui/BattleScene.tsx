@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { CombatRecord, GameState, PlayerId } from '../engine/types';
 import { allianceName } from '../engine/query';
 import { tileLabel } from '../engine/map';
-import { defenderBonusPerSoldier } from '../engine/rules/combat';
+import { defenderBonusPerSoldier, hitOn } from '../engine/rules/combat';
 import { ALLIANCE_COLORS } from '../data/factions';
 
 /**
@@ -19,6 +19,8 @@ export interface BattleSnapshot {
   cityName: string | null;
   perSoldier: number;
   bonusParts: string[];
+  /** the lowest die that kills (decision 115) */
+  hitOn: number;
 }
 
 /** Battles worth a scene: any fight over a city, or six or more soldiers in all. */
@@ -45,6 +47,7 @@ export function snapshotBattle(game: GameState, c: CombatRecord): BattleSnapshot
     cityName: t.city?.name ?? null,
     perSoldier: field ? 0 : b.perSoldier,
     bonusParts: field ? [] : b.parts,
+    hitOn: hitOn(game),
   };
 }
 
@@ -103,8 +106,8 @@ const PIPS: Record<number, [number, number][]> = {
   6: [[28, 26], [72, 26], [28, 50], [72, 50], [28, 74], [72, 74]],
 };
 
-function Die({ value, state }: { value: number; state: 'rolling' | 'landed' }) {
-  const six = state === 'landed' && value === 6;
+function Die({ value, state, hitOn }: { value: number; state: 'rolling' | 'landed'; hitOn: number }) {
+  const six = state === 'landed' && value >= hitOn;
   return (
     <svg viewBox="0 0 100 100" className={`die ${state} ${six ? 'six' : ''}`}>
       <rect x={4} y={4} width={92} height={92} rx={16} />
@@ -145,12 +148,12 @@ function odds(s: BattleSnapshot): { attacker: number; defender: number } {
     for (let i = 0; i < n; i++) {
       const x = 1 + Math.floor(Math.random() * 6);
       a += x;
-      if (x === 6) aSix++;
+      if (x >= s.hitOn) aSix++;
     }
     for (let i = 0; i < m; i++) {
       const x = 1 + Math.floor(Math.random() * 6);
       d += x;
-      if (x === 6) dSix++;
+      if (x >= s.hitOn) dSix++;
     }
     d += s.perSoldier * m;
     const aAlive = n - Math.min(n, dSix);
@@ -224,8 +227,8 @@ export function BattleScene({ game, snapshot, onClose }: { game: GameState; snap
   const total = (side: 'attacker' | 'defender') => landed.filter((d) => d.side === side).reduce((n, d) => n + d.value, 0) + (side === 'defender' && t >= plan.bonusAt + 600 ? c.defender.bonus : 0);
   const att = done ? c.attacker.score : total('attacker');
   const def = done ? c.defender.score : total('defender');
-  const sixes = (side: 'attacker' | 'defender') => landed.filter((d) => d.side === side && d.value === 6).length;
-  const shake = plan.dice.some((d) => d.value === 6 && t >= d.land && t < d.land + 350);
+  const sixes = (side: 'attacker' | 'defender') => landed.filter((d) => d.side === side && d.value >= s.hitOn).length;
+  const shake = plan.dice.some((d) => d.value >= s.hitOn && t >= d.land && t < d.land + 350);
   const field = c.mode === 'border' || c.mode === 'contest';
   const title = c.mode === 'border' ? `Border clash between ${s.originName} and ${s.tileName}` : c.mode === 'contest' ? `Contest for ${s.tileName}` : `Assault on ${s.cityName ?? s.tileName}`;
 
@@ -265,7 +268,7 @@ export function BattleScene({ game, snapshot, onClose }: { game: GameState; snap
         )}
         <div className="battle-dice">
           {myDice.map((d, i) => (
-            <Die key={i} value={t >= d.land ? d.value : 1 + (Math.floor(t / 70 + i * 2) % 6)} state={t >= d.land ? 'landed' : 'rolling'} />
+            <Die key={i} value={t >= d.land ? d.value : 1 + (Math.floor(t / 70 + i * 2) % 6)} state={t >= d.land ? 'landed' : 'rolling'} hitOn={s.hitOn} />
           ))}
         </div>
         <div className="battle-total">{key === 'attacker' ? att : def}</div>
@@ -279,7 +282,7 @@ export function BattleScene({ game, snapshot, onClose }: { game: GameState; snap
         <div className="battle-title">{title}</div>
         <div className="battle-subtitle">
           {c.attacker.soldierIds.length} {allianceName(c.attacker.allianceId)} soldier{c.attacker.soldierIds.length === 1 ? '' : 's'} against {c.defender.soldierIds.length} {allianceName(c.defender.allianceId)}
-          {field ? '. Both sides march, so neither gets a defensive bonus.' : s.cityName ? `, behind the gates of ${s.cityName}.` : '.'} Every 6 strikes down an enemy soldier.
+          {field ? '. Both sides march, so neither gets a defensive bonus.' : s.cityName ? `, behind the gates of ${s.cityName}.` : '.'} {s.hitOn >= 6 ? 'Every 6' : `Every ${s.hitOn}, ${s.hitOn + 1 < 6 ? `${s.hitOn + 1} and 6` : '6'}`} strikes down an enemy soldier.
         </div>
         <div className="battle-bar">
           <div style={{ width: `${barA}%`, background: ALLIANCE_COLORS[c.attacker.allianceId] }} />

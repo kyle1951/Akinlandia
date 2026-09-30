@@ -265,3 +265,10 @@ Both are off by default and are switched on in the setup screen or the online lo
       - an answer ("agreed", "yes", "deal", "ok" / "no", "never", "not a chance"...). A yes or no answers the latest open offer from the other side, and a later answer overrides an earlier one.
     - **Bots' own words.** A bot's own offers and answers carry a hidden note of what it meant, which is only its memory of its own words. What a bot believes was agreed is rebuilt from the messages each time it decides (`understandings` in `src/bots/talk.ts`).
     - **Bots are not bound either.** They keep the peace with an alliance they have an understanding with, but take a city of theirs that lies undefended (no fresh defender). They prefer the target of an agreed joint attack. When an alliance that gave its word attacks them, they stop trusting it and say so in public ("So much for the word of the Green alliance").
+
+### Bloodier combat (requested 2026-09-30)
+
+115. **A 4, 5 or 6 kills an enemy soldier** (replaces, in new games, ruling 22's "each 6 rolled removes one enemy soldier"). Each die showing 4 or more is a hit; everything else about combat is unchanged: totals decide the winner, ties go to the defender, the losing General chooses casualties, ships go down with their soldiers, and a side with no fresh survivors loses the tile.
+    - **Effect.** A die now kills half the time instead of one time in six, so battles cost both sides heavily. Ten attackers against five defenders now expect to kill about five and lose about two and a half, instead of about 1.7 and 0.8. Wiping out every defender, which hands the attacker the tile whatever the totals, becomes a real way to win.
+    - **Setting.** It is the game setting `hitOn`: 4 for new games (setup screen and online lobby: "Combat: every 4, 5 or 6 rolled kills an enemy soldier"), with 6 still selectable. A game without the setting (every save and online table from before this decision) keeps 6, so it replays exactly. The battle scene marks and counts hits by the same threshold.
+    - **Testing.** A third of the 200-game simulation (seeds divisible by three) plays with 4+ hits.
