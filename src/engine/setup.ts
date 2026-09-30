@@ -67,6 +67,7 @@ export function createGame(config: GameConfig, seed: number): GameState {
   const mapId = config.mapId || 'quickstart';
   const map = MAPS[mapId];
   if (!map && config.setupMode === 'quick') throw new Error(`Unknown map ${mapId}`);
+  if (config.setupMode === 'quick' && map.maxPlayers && n > map.maxPlayers) throw new Error(`${map.spec.name} has starting cities for at most ${map.maxPlayers} leaders`);
   const tiles = config.setupMode === 'quick' ? buildTiles(map.spec, {}) : {};
   // On preset maps starting cities are keyed by faction slot; translate slot ids to faction ids.
   if (config.setupMode === 'quick') {
@@ -87,7 +88,7 @@ export function createGame(config: GameConfig, seed: number): GameState {
     alliances,
     allianceOrder: [],
     allianceSeats: allianceSeatCounts(n),
-    factions: { ...FACTION_MAP },
+    factions: config.setupMode === 'quick' && map.factions ? Object.fromEntries(map.factions.map((f) => [f.id, { ...f }])) : { ...FACTION_MAP },
     tiles,
     units: {},
     nextUnitId: 1,

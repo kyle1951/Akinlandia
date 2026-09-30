@@ -182,7 +182,7 @@ function TileView({ tile, game, units, highlight, onClick, showCoords }: { tile:
   const inset = (p: { x: number; y: number }, f: number) => ({ x: p.x + (c.x - p.x) * f, y: p.y + (c.y - p.y) * f });
   return (
     <g onClick={onClick} className={highlight === 'legal' ? 'legal' : ''}>
-      <polygon className={`hex ${type} ${highlight ? 'legal' : ''}`} points={pointsStr(corners)} />
+      <polygon className={`hex ${type} ${highlight ? 'legal' : ''}`} points={pointsStr(corners)} style={tile.tint && type !== 'sea' ? { fill: tile.tint } : undefined} />
       {type === 'coastal' &&
         tile.edges.map((e, d) => {
           if (e.type !== 'sea') return null;

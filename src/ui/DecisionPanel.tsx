@@ -110,7 +110,9 @@ function ChooseRole({ game, pending, dispatch }: P<'chooseRole'>) {
   return (
     <div>
       <h2>Choose your role</h2>
-      <p>Pick an alliance and an available faction. The Purple (royal) faction must be filled first and begins as General.</p>
+      <p>
+        Pick an alliance and an available faction. Each alliance&apos;s royal faction ({Object.values(game.factions).filter((f) => f.royal).map((f) => f.name).join(', ')}) must be filled first and begins as General.
+      </p>
       {pending.options.map((o) => {
         const f = game.factions[o.factionId];
         return (

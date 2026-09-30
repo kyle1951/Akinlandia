@@ -57,6 +57,8 @@ export interface Tile {
   edges: Edge[]; // exactly 6, index = direction
   city: City | null;
   resources: Resource[];
+  /** optional ground colour for the board (purely visual) */
+  tint?: string;
 }
 
 export type TileType = 'sea' | 'land' | 'coastal';

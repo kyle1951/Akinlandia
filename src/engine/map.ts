@@ -15,8 +15,10 @@ export interface TileSpec {
   base: 'sea' | 'land' | 'auto';
   seaEdges?: number[];
   landEdges?: number[];
-  city?: { name: string; level?: CityLevel; slot: string | 'neutral' };
+  city?: { name: string; level?: CityLevel; slot: string | 'neutral'; walls?: boolean };
   resources?: Resource[];
+  /** optional ground colour for the board (purely visual) */
+  tint?: string;
 }
 
 export interface MountainSpec {
@@ -129,6 +131,7 @@ export function buildTiles(spec: MapSpec, slotOwners: Record<string, string | un
       edges,
       city: null,
       resources: [...(t.resources ?? [])],
+      ...(t.tint ? { tint: t.tint } : {}),
     };
     if (t.city) {
       const owner = t.city.slot === 'neutral' ? undefined : slotOwners[t.city.slot];
@@ -137,7 +140,7 @@ export function buildTiles(spec: MapSpec, slotOwners: Record<string, string | un
         slot: t.city.slot === 'neutral' ? null : t.city.slot,
         level: t.city.level ?? 1,
         ownerId: owner ?? null,
-        walls: false,
+        walls: t.city.walls ?? false,
         temple: false,
         university: false,
       };

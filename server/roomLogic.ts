@@ -211,6 +211,8 @@ export class Room {
     if (this.record.status !== 'lobby') return this.fail('The game has already begun.');
     const humans = this.record.seats.filter((s) => s.token).length;
     if (humans === 0) return this.fail('Claim a seat before beginning.');
+    const map = MAPS[this.record.mapId ?? 'quickstart'];
+    if (this.record.setupMode === 'quick' && map?.maxPlayers && this.record.seats.length > map.maxPlayers) return this.fail(`${map.spec.name} has room for at most ${map.maxPlayers} leaders; remove a seat first.`);
     const seedText = this.record.seedText.trim();
     const seed = seedText === '' ? this.randomSeed() : /^\d+$/.test(seedText) ? Number(seedText) >>> 0 : hashSeed(seedText);
     const config: GameConfig = {

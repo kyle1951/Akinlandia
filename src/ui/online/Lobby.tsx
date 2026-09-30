@@ -121,9 +121,9 @@ export function Lobby({ lobby, send, connected, error, clearError, onLeave }: { 
         <div className="panel config" style={{ marginTop: 12 }}>
           <h3>Host controls</h3>
           <label>
-            Number of leaders (3 to 9):{' '}
+            Number of leaders (3 to {mode === 'quick' ? (MAPS[mapId]?.maxPlayers ?? 9) : 9}):{' '}
             <select value={lobby.seats.length} onChange={(e) => setCount(Number(e.target.value))}>
-              {[3, 4, 5, 6, 7, 8, 9].map((n) => (
+              {[3, 4, 5, 6, 7, 8, 9].filter((n) => mode !== 'quick' || n <= (MAPS[mapId]?.maxPlayers ?? 9)).map((n) => (
                 <option key={n} value={n}>
                   {n}
                 </option>

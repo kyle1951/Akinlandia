@@ -34,13 +34,14 @@ function landReach(tiles: Record<string, Tile>, start: string): Set<string> {
 }
 
 describe('starting slots are equitable', () => {
-  for (const mapId of ['table2026', 'eurasia']) {
+  for (const mapId of ['table2026', 'eurasia', 'claremont']) {
     it(`${mapId}: every faction has room of its own`, () => {
       const tiles = buildTiles(MAPS[mapId].spec, {});
       const bySlot: Record<string, Tile[]> = {};
       for (const t of Object.values(tiles)) if (t.city?.slot) (bySlot[t.city.slot] ??= []).push(t);
       const slots = Object.keys(bySlot);
-      expect(slots.length).toBe(9);
+      expect(slots.length).toBe(MAPS[mapId].maxPlayers ?? 9);
+      const landlocked = !Object.values(tiles).some((t) => t.edges.some((e) => e.type === 'sea'));
       const area = Object.fromEntries(slots.map((s) => [s, new Set(bySlot[s].flatMap((c) => [...landReach(tiles, c.id)]))]));
       const starting = new Set(Object.values(bySlot).flat().map((t) => t.id));
       const problems: string[] = [];
@@ -48,7 +49,7 @@ describe('starting slots are equitable', () => {
         const cs = bySlot[s];
         if (cs.length !== 2) problems.push(`${s} has ${cs.length} cities`);
         if (hexDistance(cs[0], cs[1]) > 4) problems.push(`${s} cities are ${hexDistance(cs[0], cs[1])} apart`);
-        if (!cs.some((c) => c.edges.some((e) => e.type === 'sea'))) problems.push(`${s} has no coastal city`);
+        if (!landlocked && !cs.some((c) => c.edges.some((e) => e.type === 'sea'))) problems.push(`${s} has no coastal city`);
         for (const o of slots) if (o !== s) for (const a of cs) for (const b of bySlot[o]) if (hexDistance(a, b) < 2) problems.push(`${a.city!.name} (${s}) is adjacent to ${b.city!.name} (${o})`);
         let wheat = 0, raw = 0;
         for (const t of area[s]) {

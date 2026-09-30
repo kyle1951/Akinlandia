@@ -2,6 +2,8 @@ import { symmetricMap } from '../engine/map';
 import type { MapSpec, MountainSpec, TileSpec } from '../engine/map';
 import { TABLE_MAP, TABLE_SLOTS } from './tableMap';
 import { EURASIA_MAP, EURASIA_SLOTS } from './eurasiaMap';
+import { CLAREMONT_FACTIONS, CLAREMONT_MAP, CLAREMONT_SLOTS } from './claremontMap';
+import type { FactionDef } from '../engine/types';
 
 /**
  * The Quick Start map (ruling 4, decision 43).
@@ -122,8 +124,25 @@ export const QUICK_START_SLOTS: Record<string, string> = {
   'green-third': 'green-teal',
 };
 
-export const MAPS: Record<string, { spec: MapSpec; slots: Record<string, string>; description: string }> = {
+export interface PresetMap {
+  spec: MapSpec;
+  slots: Record<string, string>;
+  description: string;
+  /** replaces the standard factions (names, colours; only these may be chosen) */
+  factions?: FactionDef[];
+  /** most leaders the map has starting cities for */
+  maxPlayers?: number;
+}
+
+export const MAPS: Record<string, PresetMap> = {
   quickstart: { spec: QUICK_START_MAP, slots: QUICK_START_SLOTS, description: 'The Akinlandian Sea: a symmetric 91-hex board designed for the digital game.' },
   table2026: { spec: TABLE_MAP, slots: TABLE_SLOTS, description: 'The Table of 2026: the hand-painted board from the last live game, reconstructed from photographs.' },
   eurasia: { spec: EURASIA_MAP, slots: EURASIA_SLOTS, description: 'Eurasia: Europe (White), the Middle East and India (Black) and East Asia (Green), with Siberia and the steppe as a shared frontier; every homeland has equal fields.' },
+  claremont: {
+    spec: CLAREMONT_MAP,
+    slots: CLAREMONT_SLOTS,
+    description: 'The Claremont Colleges: up to six leaders, one per college. Stags (CMC and Harvey Mudd), Sagehens (Pomona and Pitzer), and Scripps with CGU fight over the Consortium and the athletic fields. Landlocked: no ships.',
+    factions: CLAREMONT_FACTIONS,
+    maxPlayers: 6,
+  },
 };

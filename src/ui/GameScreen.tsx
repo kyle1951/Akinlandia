@@ -91,6 +91,7 @@ export function GameScreen({ ctl }: { ctl: Controller }) {
   }, [game]);
 
   const allBots = game.seatOrder.every((p) => game.players[p].isBot);
+  const landlocked = useMemo(() => !Object.values(game.tiles).some((t) => t.edges.some((e) => e.type === 'sea')), [game.tiles]);
 
   // Online: make it obvious in the tab bar when it is your turn.
   useEffect(() => {
@@ -161,7 +162,7 @@ export function GameScreen({ ctl }: { ctl: Controller }) {
 
   return (
     <div className="app">
-      <div className="board-area">
+      <div className={`board-area ${landlocked && Object.keys(game.tiles).length ? 'landlocked' : ''}`}>
         <Board game={game} highlights={board.highlights} onTileClick={board.onTileClick} showCoords={showCoords} arrows={board.arrows} />
         <div className="topbar">
           <div className="status">

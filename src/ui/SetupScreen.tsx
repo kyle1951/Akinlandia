@@ -25,11 +25,15 @@ export function SetupScreen(props: { onStart: (config: GameConfig, seed: number)
 
   const update = (i: number, patch: Partial<Seat>) => setSeats((s) => s.map((x, j) => (j === i ? { ...x, ...patch } : x)));
 
+  // a map with starting cities for fewer leaders caps the table
+  const maxLeaders = mode === 'quick' ? (MAPS[mapId]?.maxPlayers ?? 9) : 9;
+  const leaders = Math.min(count, maxLeaders);
+
   const start = () => {
     const seed = seedText.trim() === '' ? (Date.now() ^ Math.floor(Math.random() * 0xffffffff)) >>> 0 : /^\d+$/.test(seedText.trim()) ? Number(seedText.trim()) >>> 0 : hashSeed(seedText.trim());
     props.onStart(
       {
-        seats: seats.slice(0, count).map((s) => ({ name: s.name || 'Leader', leaderName: s.leaderName || `${s.name || 'Leader'} the Adequate`, isBot: s.isBot })),
+        seats: seats.slice(0, leaders).map((s) => ({ name: s.name || 'Leader', leaderName: s.leaderName || `${s.name || 'Leader'} the Adequate`, isBot: s.isBot })),
         setupMode: mode,
         alwaysPromptReactions: alwaysPrompt,
         mapId,
@@ -66,9 +70,9 @@ export function SetupScreen(props: { onStart: (config: GameConfig, seed: number)
       <div className="panel">
         <h3>Leaders</h3>
         <label>
-          Number of leaders (3 to 9):{' '}
-          <select value={count} onChange={(e) => setCount(Number(e.target.value))}>
-            {[3, 4, 5, 6, 7, 8, 9].map((n) => (
+          Number of leaders (3 to {maxLeaders}):{' '}
+          <select value={leaders} onChange={(e) => setCount(Number(e.target.value))}>
+            {[3, 4, 5, 6, 7, 8, 9].filter((n) => n <= maxLeaders).map((n) => (
               <option key={n} value={n}>
                 {n}
               </option>
@@ -85,7 +89,7 @@ export function SetupScreen(props: { onStart: (config: GameConfig, seed: number)
             </tr>
           </thead>
           <tbody>
-            {seats.slice(0, count).map((s, i) => (
+            {seats.slice(0, leaders).map((s, i) => (
               <tr key={i}>
                 <td>{i + 1}</td>
                 <td>
