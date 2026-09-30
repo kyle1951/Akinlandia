@@ -139,23 +139,36 @@ function readDiplomacy(state: GameState, a: AllianceId): Understanding[] {
   return out;
 }
 
-/** What an alliance's bots believe they have agreed and not yet seen broken: truces and joint attacks. */
+/**
+ * What an alliance's bots believe they have agreed and not yet seen broken: whom they are at peace with (a
+ * truce, or the partner in a joint attack) and whom they have agreed to attack together.
+ */
 export function understandings(state: GameState, a: AllianceId): { truce: AllianceId[]; joint: AllianceId[] } {
   const truce = new Set<AllianceId>();
   const joint = new Set<AllianceId>();
   for (const u of readDiplomacy(state, a)) {
     if (!u.accepted || state.turn > u.answeredTurn + u.offer.turns) continue;
     const other = u.offer.from === a ? u.offer.to : u.offer.from;
-    if (u.offer.pact === 'truce') truce.add(other);
-    else if (u.offer.targetAllianceId) joint.add(u.offer.targetAllianceId);
+    truce.add(other);
+    if (u.offer.pact === 'joint' && u.offer.targetAllianceId) joint.add(u.offer.targetAllianceId);
   }
   for (const b of betrayers(state, a)) truce.delete(b);
+  for (const j of joint) truce.delete(j);
   return { truce: [...truce], joint: [...joint] };
 }
 
-/** Alliances that attacked this one this turn. */
+/**
+ * Alliances that attacked this one this turn: an assault on its units, or a march into its tile across the
+ * same border it was crossing. Reaching the same empty tile at once (a contest) is nobody's attack.
+ */
 function attackersOf(state: GameState, a: AllianceId): AllianceId[] {
-  return [...new Set(Object.values(state.turnData.combats ?? {}).filter((c) => c.defender.allianceId === a && c.attacker.allianceId !== a).map((c) => c.attacker.allianceId))];
+  const out = new Set<AllianceId>();
+  for (const c of Object.values(state.turnData.combats ?? {})) {
+    if (c.mode === 'contest') continue;
+    if (c.defender.allianceId === a && c.attacker.allianceId !== a) out.add(c.attacker.allianceId);
+    if (c.mode === 'border' && c.attacker.allianceId === a) out.add(c.defender.allianceId);
+  }
+  return [...out];
 }
 
 /** Alliances that gave their word of peace and attacked this turn anyway. */
@@ -164,7 +177,8 @@ function betrayers(state: GameState, a: AllianceId): AllianceId[] {
   if (attackers.length === 0) return [];
   const promised = new Set<AllianceId>();
   for (const u of readDiplomacy(state, a)) {
-    if (u.accepted && u.offer.pact === 'truce' && state.turn <= u.answeredTurn + u.offer.turns) promised.add(u.offer.from === a ? u.offer.to : u.offer.from);
+    // a truce, or partnership in a joint attack, is a promise of peace between the two
+    if (u.accepted && state.turn <= u.answeredTurn + u.offer.turns) promised.add(u.offer.from === a ? u.offer.to : u.offer.from);
   }
   return attackers.filter((x) => promised.has(x));
 }

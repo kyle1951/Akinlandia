@@ -272,3 +272,15 @@ Both are off by default and are switched on in the setup screen or the online lo
     - **Effect.** A die kills half the time instead of one time in six, so battles cost both sides heavily. Ten attackers against five defenders expect to kill about five and lose about two and a half, instead of about 1.7 and 0.8. Wiping out every defender, which hands the attacker the tile whatever the totals, becomes a real way to win.
     - **Setting.** It is the game setting `hitOn`. The default is 6, as in the rules; the variant is 4 (setup screen and online lobby, under Combat). The variant was briefly the default on 2026-09-30 and was made optional at the table's request. A game without the setting keeps 6. The battle scene marks and counts hits by the game's threshold.
     - **Testing.** A third of the 200-game simulation (seeds divisible by three) plays with 4+ hits.
+
+### Bots that feed their armies and keep the peace (requested 2026-09-30)
+
+116. **Bot armies and bot truces.** A narrated bot game on the Claremont map showed two faults, both in the bots, not the rules.
+    - **Starving armies.** Bots planned soldiers on the wheat fields their cities could reach. They actually harvested far less, because farmers landed on raw-only tiles and rivals took shared fields first, so armies outgrew their food and starved. Over 20 nine-player Claremont bot games, bots raised 143 soldiers a game and 53 of them starved, while fewer than 3 died in battle.
+      - Now a bot raises a soldier only if the harvest can feed the army. The harvest counted is last turn's actual harvest (plus one wheat farmer), never more than the reachable fields at 80%. The existing army must be fed this turn, and the whole army must be fed from the harvest plus a fifth of the spare granary (about five turns of shortfall at most).
+      - Starvation fell to 18 a game; what remains is mostly harvests lost to war.
+    - **Truces that meant nothing.** Bots kept out of a partner's held tiles but still raced partners into empty ground (a contest). They also attacked partners in a joint attack, and they called a contest a betrayal.
+      - A truce now means no contact. A bot leaves a partner's farmers and ships alone and, when everyone moves at once, stays off empty ground a partner's soldiers could also reach that round.
+      - Partners in an agreed joint attack are at peace with each other.
+      - Only an assault, or a march into the other's tile across the same border, counts as betrayal; a contest for empty ground does not.
+      - Betrayal complaints fell from 4 to 1.2 a game.

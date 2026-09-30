@@ -7,7 +7,7 @@
 import type { Action, Allocation, AllianceId, BuildingPlacement, GameState, MoveGroup, PendingDecision, PlayerId, SubPhase, Tile, Unit } from '../engine/types';
 import { createRng, nextFloat, nextInt } from '../engine/rng';
 import type { RngState } from '../engine/rng';
-import { allianceOf, capacityOf, citiesOf, cityCount, isGeneral, membersOf, shipsOnTile, soldierCount, soldiersOnTile, tile, unitsOnTile } from '../engine/query';
+import { FOOD_PER_WHEAT, allianceOf, capacityOf, citiesOf, cityCount, isGeneral, membersOf, shipsOnTile, soldierCount, soldiersOnTile, tile, unitsOnTile } from '../engine/query';
 import { checkAllocation, emptyAllocation } from '../engine/rules/allocation';
 import { legalFarmerTiles, legalShipTiles } from '../engine/rules/deploy';
 import { legalDestinations, movableUnitsAt, validateOrder } from '../engine/rules/movement';
@@ -182,6 +182,18 @@ export function botAction(state: GameState, pending: PendingDecision): Action {
   }
 }
 
+/** The food this leader harvested at the last reconciliation, from the record of deeds (null before the first). */
+function lastHarvest(state: GameState, pid: PlayerId): number | null {
+  const name = `${state.players[pid].leaderName} (`;
+  for (let i = state.log.length - 1; i >= 0; i--) {
+    const e = state.log[i];
+    if (e.category !== 'reconcile' || !e.text.startsWith(name)) continue;
+    const m = e.text.match(/ harvests (\d+) food/);
+    if (m) return Number(m[1]);
+  }
+  return null;
+}
+
 function chooseAllocation(state: GameState, pid: PlayerId, rng: RngState): Allocation {
   const p = state.players[pid];
   const cap = capacityOf(state, pid);
@@ -191,15 +203,25 @@ function chooseAllocation(state: GameState, pid: PlayerId, rng: RngState): Alloc
     const farmableTiles = legalFarmerTiles(state, pid).map((t) => state.tiles[t.tileId]);
     const wheatTiles = farmableTiles.filter((t) => t.resources.includes('wheat')).length;
     const rawTiles = farmableTiles.filter((t) => resourceScore(t) > 0).length;
-    // Feed the army with margin: aim to end the turn with food >= soldiers + 1.
-    const plannedSoldiers = soldiers + Math.max(1, Math.floor(cap / 3));
-    const foodNeed = Math.max(0, plannedSoldiers + 1 - p.food);
-    let farmers = Math.min(cap, wheatTiles, foodNeed + 1);
+    // Farm enough wheat to feed the army every harvest, with room for a few more soldiers.
+    const wantArmy = soldiers + Math.max(1, Math.floor(cap / 3));
+    let farmers = Math.min(cap, wheatTiles, Math.ceil(wantArmy / FOOD_PER_WHEAT) + 1);
     // keep a few farmers on raw materials to save for city levels
     farmers = Math.min(cap, rawTiles, Math.max(farmers, Math.ceil(cap * 0.4)));
     const rest = cap - farmers;
-    // soldiers cost 1 food and 1 raw each now (house rules) and must be fed next turn
-    const affordable = Math.max(0, Math.min(p.food, p.raw, p.food + 2 * Math.min(farmers, wheatTiles) - soldiers));
+    // Only raise soldiers the harvest can feed. A soldier costs 1 food and 1 raw now (decision 99) and eats
+    // 1 food every turn from the next; count on a little less than the full harvest, since rivals may farm
+    // shared fields first. This turn the existing army must be fed; from then on the harvest (with a third of
+    // the spare granary) must feed the whole army.
+    // Trust last turn's actual harvest over the fields on the map: farmers land on raw tiles and rivals take
+    // shared fields, so the map promises more food than arrives.
+    const planned = Math.floor(FOOD_PER_WHEAT * Math.min(farmers, wheatTiles) * 0.8);
+    const last = lastHarvest(state, pid);
+    const harvest = last === null ? planned : Math.min(planned, last + FOOD_PER_WHEAT);
+    const thisTurn = p.food + harvest - soldiers;
+    // the granary may cover a shortfall for about five turns, no more
+    const sustainable = harvest + Math.floor(Math.max(0, p.food - soldiers) / 5);
+    const affordable = Math.max(0, Math.min(p.food, p.raw, thisTurn, sustainable - soldiers));
     let newSoldiers = Math.min(rest, affordable, Math.ceil(rest * 0.7));
     if (nextFloat(rng) < 0.2) newSoldiers = Math.min(rest, affordable, newSoldiers + 1);
     a.farmers = farmers;
@@ -341,7 +363,15 @@ function planFromTile(state: GameState, alliance: AllianceId, src: string, sub: 
     const dt = tile(state, d.tileId);
     const enemies = soldiersOnTile(state, d.tileId).filter((u) => allianceOf(state, u.ownerId) !== alliance);
     const holder = enemies.length ? allianceOf(state, enemies[0].ownerId) : dt.city?.ownerId ? allianceOf(state, dt.city.ownerId) : null;
-    if (holder && holder !== alliance && truce.has(holder) && !(dt.city && enemies.every((e) => e.spent))) continue;
+    const temptation = !!holder && holder !== alliance && truce.has(holder) && !!dt.city && enemies.every((e) => e.spent);
+    if (holder && holder !== alliance && truce.has(holder) && !temptation) continue;
+    // a truce means no contact: leave a partner's farmers and ships alone, and (when everyone moves at once)
+    // stay off empty ground a partner's soldiers could also reach this round
+    if (truce.size && !temptation) {
+      if (unitsOnTile(state, d.tileId).some((u) => truce.has(allianceOf(state, u.ownerId)))) continue;
+      const simultaneous = state.config.militaryMode === 'simultaneous';
+      if (simultaneous && Object.values(state.units).some((u) => u.kind === 'soldier' && truce.has(allianceOf(state, u.ownerId)) && hexDistance(state.tiles[u.tileId], dt) === 1)) continue;
+    }
     const enemyFarmers = unitsOnTile(state, d.tileId).some((u) => u.kind === 'farmer' && allianceOf(state, u.ownerId) !== alliance);
     const maxCount = d.via === 'sea' ? Math.min(spare, ships.length) : spare;
     if (maxCount <= 0) continue;

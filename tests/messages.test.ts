@@ -6,8 +6,9 @@ import { destinationsFrom } from '../src/engine/rules/movement';
 import { botAction } from '../src/bots/heuristic';
 import { botSays, understandings } from '../src/bots/talk';
 import { runBotGame } from '../src/bots/runner';
-import { act, addUnit, clearUnits, generalOf, newGame, playerOf, setActing, toMilitary } from './helpers';
-import type { CombatRecord, GameState, MessageAudience, MessageIntent } from '../src/engine/types';
+import { act, addUnit, clearUnits, generalOf, newGame, playerOf, runUntil, setActing, toMilitary } from './helpers';
+import { advance } from '../src/engine/machine';
+import type { CombatRecord, GameState, MessageAudience, MessageIntent, PendingDecision } from '../src/engine/types';
 
 const say = (s: GameState, playerId: string, to: MessageAudience, text: string, intent?: MessageIntent) => act(s, { kind: 'say', playerId, to, text, ...(intent ? { intent } : {}) });
 const WB: MessageAudience = { kind: 'diplomacy', allianceIds: ['white', 'black'] };
@@ -94,6 +95,44 @@ describe('messages (decisions 112, 114)', () => {
     expect(plan(false, false).length).toBeGreaterThan(0);
     expect(plan(true, false)).toEqual([]);
     expect(plan(true, true).length).toBeGreaterThan(0);
+  });
+
+  it('partners in a joint attack are at peace with each other', () => {
+    const s = newGame(3, 1);
+    say(s, generalOf(s, 'white'), WB, 'Join us against the Green alliance for two turns?');
+    say(s, generalOf(s, 'black'), WB, 'Yes. We march with you.');
+    expect(understandings(s, 'black')).toEqual({ truce: ['white'], joint: ['green'] });
+  });
+
+  it('a bot leaves a truce partner’s farmers alone', () => {
+    const plan = (truce: boolean) => {
+      const s = newGame(3, 1, { militaryMode: 'simultaneous' });
+      runUntil(s, (st) => st.pending?.kind === 'submitOrders');
+      clearUnits(s);
+      // three Black soldiers ringed by White farmers on open, non-city land: without a truce they raid one
+      const land = (id: string) => destinationsFrom(s, id).filter((d) => d.via === 'land').map((d) => d.tileId);
+      const open = (id: string) => land(id).filter((n) => !s.tiles[n].city);
+      const from = Object.values(s.tiles).find((t) => !t.city && open(t.id).length >= 2)!.id;
+      const around = open(from);
+      const black = playerOf(s, 'black');
+      for (let i = 0; i < 3; i++) addUnit(s, 'soldier', black, from);
+      for (const t of around) addUnit(s, 'farmer', playerOf(s, 'white'), t);
+      // neighbouring cities are Black's own, so nothing else tempts the stack
+      for (const n of land(from)) if (s.tiles[n].city) s.tiles[n].city!.ownerId = black;
+      if (truce) {
+        say(s, generalOf(s, 'white'), WB, 'A truce for two turns?');
+        say(s, generalOf(s, 'black'), WB, 'Agreed.');
+      }
+      s.tasks = [{ kind: 'simRound', idx: 1, started: false }];
+      s.pending = null;
+      advance(s);
+      const pending = () => s.pending as PendingDecision | null;
+      while (pending()?.kind === 'submitOrders' && (pending() as Extract<PendingDecision, { kind: 'submitOrders' }>).allianceId !== 'black') act(s, { kind: 'submitOrders', playerId: pending()!.playerId, orders: [], scuttle: [] });
+      const a = botAction(s, pending()!);
+      return a.kind === 'submitOrders' && a.orders.some((o) => o.groups.some((g) => around.includes(g.destTileId)));
+    };
+    expect(plan(false)).toBe(true);
+    expect(plan(true)).toBe(false);
   });
 
   it('a betrayed bot says so in public and stops trusting the betrayer', () => {
