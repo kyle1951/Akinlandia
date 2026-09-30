@@ -1,49 +1,54 @@
 /**
- * Generator for the Claremont Colleges preset map (decision 110). Writes src/data/claremontMap.ts.
+ * Generator for the Claremont Colleges preset map (decisions 110-111). Writes src/data/claremontMap.ts.
  *
  * usage: npx vite-node scripts/genClaremont.ts [--write]
  *
- * A six-player, landlocked board of the 5Cs traced from the campus map: each
- * college is one faction. The three alliances are the athletic conferences:
- * Black = the Stags (CMC, royal, and Harvey Mudd), White = the Sagehens
- * (Pomona, royal, and Pitzer), Green = Scripps (royal) and CGU.
+ * A landlocked board of the Claremont Colleges traced from the campus map, for up to
+ * nine leaders: each college is one faction. The alliances are the athletic
+ * conferences plus one graduate or consortium member each:
+ *   Black = the Stags: CMC (royal), Harvey Mudd, Keck Graduate Institute
+ *   White = the Sagehens: Pomona (royal), Pitzer, Claremont School of Theology
+ *   Green = Scripps (royal), CGU, the Consortium (CUC)
  *
  * TERRAIN is drawn on an offset grid (x = column west->east, y = row north->south;
  * flat-top hexes, odd columns sit half a hex lower). Letters mark each college's
- * home ground; n is neutral ground (the Claremont University Consortium, north
- * Pomona, the athletic fields); . is off the board. There is no water and no
- * mountain: Claremont is flat and a long way from the sea.
+ * home ground; n is neutral ground (north Pomona, the athletic fields, the
+ * arboretum); . is off the board. There is no water and no mountain: Claremont
+ * is flat and a long way from the sea.
  */
 import { writeFileSync } from 'fs';
-import { hexDistance, tileId } from '../src/engine/hex';
+import { hexDistance, neighbor, tileId } from '../src/engine/hex';
 
 const TERRAIN = [
   '..GGMMMMMMZZZZ',
   '..GGMMMMMMZZZZ',
   '..GGSSSSSSZZZZ',
   '..GGSSSSSSZZZn',
-  '..GGnSSSSSZZnn',
-  '..GGnnCCCCCCnn',
-  '..nnnnnCCCCCnn',
-  'nnnnnnnCCCCnnn',
-  'nnnnnnnnCnnnnn',
-  'nnnnnnnnnnnnnn',
-  'nPPPPPnnnnn.n.',
-  'nPPPPPnnnn....',
-  'nPPPPnnnnn....',
-  'nnPPPnnnnn....',
+  '..GGUSSSSSZZnn',
+  '..GGUUCCCCCCnn',
+  '..UUUUnCCCCCnn',
+  'nnUUUnnCCCCKKK',
+  'nnnnnnnnCnKKKK',
+  'nnnnnnnnnnKKKK',
+  'nPPPPPnnnnK.K.',
+  'nPPPPPTTTT....',
+  'nPPPPTTTTT....',
+  'nnPPPTTTTT....',
   'n.n.n.n.n.n...',
 ];
 
-type Cls = 'G' | 'M' | 'S' | 'Z' | 'C' | 'P' | 'n';
+type Cls = 'G' | 'M' | 'S' | 'Z' | 'C' | 'P' | 'U' | 'K' | 'T' | 'n';
 /** each college's home letter and the faction slot it plays */
 const COLLEGES: Record<Exclude<Cls, 'n'>, { slot: string; name: string }> = {
   C: { slot: 'black-purple', name: 'CMC' },
   M: { slot: 'black-orange', name: 'Harvey Mudd' },
+  K: { slot: 'black-gold', name: 'KGI' },
   P: { slot: 'white-purple', name: 'Pomona' },
   Z: { slot: 'white-crimson', name: 'Pitzer' },
+  T: { slot: 'white-azure', name: 'Theology' },
   S: { slot: 'green-purple', name: 'Scripps' },
   G: { slot: 'green-rose', name: 'CGU' },
+  U: { slot: 'green-teal', name: 'Consortium' },
 };
 
 // [x, y, name, college letter for a starting city]
@@ -51,14 +56,16 @@ const CITIES: [number, number, string, Cls?][] = [
   // starting cities, two per college
   [7, 6, 'The Ath', 'C'], [10, 6, 'Collins', 'C'],
   [5, 0, 'Hoch-Shanahan', 'M'], [8, 0, 'Platt', 'M'],
+  [12, 8, 'KGI Campus', 'K'], [10, 9, 'Riggs School', 'K'],
   [2, 11, 'Frary', 'P'], [4, 13, 'Frank', 'P'],
   [11, 1, 'McConnell', 'Z'], [12, 3, 'Mead Hall', 'Z'],
+  [7, 12, 'Kresge Chapel', 'T'], [9, 11, 'Theology Library', 'T'],
   [6, 4, 'Malott Commons', 'S'], [8, 4, 'Denison Library', 'S'],
   [2, 1, 'Harper Hall', 'G'], [3, 4, 'Burkle', 'G'],
+  [4, 6, 'Honnold Library', 'U'], [2, 7, 'Huntley Bookstore', 'U'],
   // neutral ground
-  [4, 6, 'Honnold Library'], [2, 7, 'Huntley Bookstore'], [5, 9, 'Bridges Auditorium'], [2, 3, 'Stauffer'],
-  [12, 6, 'Keck Science'], [12, 9, 'Roberts Pavilion'], [10, 9, 'Zinda Field'], [13, 4, 'Grove House'],
-  [7, 12, 'Merritt Field'],
+  [2, 3, 'Stauffer'], [5, 9, 'Bridges Auditorium'], [8, 8, 'Keck Science'],
+  [13, 9, 'Roberts Pavilion'], [7, 10, 'Merritt Field'], [0, 8, 'Oldenborg'],
 ];
 
 /** starting cities that begin behind walls (+1 per defender), to offset a college's exposed position */
@@ -94,11 +101,54 @@ for (let i = 0; i < cityIds.length; i++)
   for (let j = i + 1; j < cityIds.length; j++)
     if (hexDistance(qr(cityIds[i]), qr(cityIds[j])) < 2) problems.push(`${cityAt.get(cityIds[i])} and ${cityAt.get(cityIds[j])} are adjacent`);
 
-// ---- land reach (distance 2; no water, no mountains)
+// ---- campus walls: every edge between two different colleges' grounds, with a gate every
+// third edge (the same pattern as Eurasia's mountain passes). Off unless WALLS=1: in bot games
+// they did not help the surrounded Stags (decision 111).
+const walls: [string, number][] = [];
+if (process.env.WALLS === '1') {
+  const borders: Record<string, [string, number][]> = {};
+  for (const id of ids) {
+    for (let d = 0; d < 3; d++) {
+      const n = neighbor(qr(id), d);
+      const nid = tileId(n.q, n.r);
+      if (!cellAt.has(nid)) continue;
+      const a = clsOf(id);
+      const b = clsOf(nid);
+      if (a === b || a === 'n' || b === 'n') continue;
+      (borders[[a, b].sort().join('')] ??= []).push([id, d]);
+    }
+  }
+  for (const key of Object.keys(borders).sort()) {
+    const edges = borders[key].sort((u, v) => (u[0] < v[0] ? -1 : u[0] > v[0] ? 1 : u[1] - v[1]));
+    edges.forEach((e, i) => {
+      if (i % 3 !== 1) walls.push(e);
+    });
+  }
+}
+const wallSet = new Set<string>();
+for (const [id, d] of walls) {
+  const n = neighbor(qr(id), d);
+  wallSet.add(`${id}|${tileId(n.q, n.r)}`);
+  wallSet.add(`${tileId(n.q, n.r)}|${id}`);
+}
+
+// ---- land reach (distance 2, not through walls)
 function reach(start: string): Set<string> {
-  const out = new Set<string>();
-  for (const id of ids) if (hexDistance(qr(start), qr(id)) <= 2) out.add(id);
-  return out;
+  const best = new Map([[start, 0]]);
+  const queue = [start];
+  while (queue.length) {
+    const id = queue.shift()!;
+    const dd = best.get(id)!;
+    if (dd === 2) continue;
+    for (let d = 0; d < 6; d++) {
+      const n = neighbor(qr(id), d);
+      const nid = tileId(n.q, n.r);
+      if (!cellAt.has(nid) || wallSet.has(`${id}|${nid}`) || best.has(nid)) continue;
+      best.set(nid, dd + 1);
+      queue.push(nid);
+    }
+  }
+  return new Set(best.keys());
 }
 const colleges = Object.keys(COLLEGES) as Exclude<Cls, 'n'>[];
 const startsOf = (c: Cls) => cityIds.filter((id) => startOf.get(id) === c);
@@ -156,8 +206,8 @@ for (const city of cityIds.filter((id) => !startOf.has(id))) {
 // 2. each college: two wheat and one raw by each starting city, then its private ground topped up
 for (const c of colleges) {
   const priv = privateOf(c).filter((t) => !cityAt.has(t));
-  for (const city of startsOf(c)) spread(priv.filter((t) => hexDistance(qr(t), qr(city)) <= 2), 2, 'wheat');
-  for (const city of startsOf(c)) spread(priv.filter((t) => hexDistance(qr(t), qr(city)) <= 2), 1, 'raw');
+  for (const city of startsOf(c)) spread(priv.filter((t) => reach(city).has(t)), 2, 'wheat');
+  for (const city of startsOf(c)) spread(priv.filter((t) => reach(city).has(t)), 1, 'raw');
   spread(priv, PRIVATE_WHEAT, 'wheat');
   spread(priv, PRIVATE_RAW, 'raw');
   if (priv.length < PRIVATE_WHEAT) problems.push(`${COLLEGES[c].name} has only ${priv.length} private tiles`);
@@ -189,8 +239,17 @@ for (const city of cityIds.filter((id) => !startOf.has(id))) {
   (nearest[key] ??= []).push(`${cityAt.get(city)} (${m})`);
 }
 console.log(slotRules.join('\n'));
+console.log(`walls: ${walls.length} edges`);
 console.log(`neutral: ${neutral.length} tiles, wheat ${neutral.filter(hasWheat).length}, raw ${neutral.filter(hasRaw).length}; ${ids.length} tiles, ${cityIds.length} cities`);
 console.log('nearest neutral cities:', JSON.stringify(nearest, null, 1));
+const byAlliance: Record<string, number> = {};
+for (const city of cityIds.filter((id) => !startOf.has(id))) {
+  const d = Object.fromEntries(colleges.map((c) => [c, Math.min(...startsOf(c).map((s) => hexDistance(qr(s), qr(city))))]));
+  const m = Math.min(...Object.values(d));
+  const winners = [...new Set(colleges.filter((c) => d[c] === m).map((c) => COLLEGES[c].slot.split('-')[0]))];
+  for (const w of winners) byAlliance[w] = (byAlliance[w] ?? 0) + 1 / winners.length;
+}
+console.log('nearest neutral cities by alliance:', byAlliance);
 if (problems.length) console.log('PROBLEMS\n' + problems.join('\n'));
 
 // ---- emit
@@ -208,17 +267,20 @@ if (process.argv.includes('--write')) {
     const walled = city && WALLED.has(city) ? ', true' : '';
     return `  [${q}, ${r}, '${clsOf(id)}', '${res}'${city ? `, ${JSON.stringify(city)}` : ''}${college ? `, '${COLLEGES[college as Exclude<Cls, 'n'>].slot}'` : walled ? ', undefined' : ''}${walled}],`;
   });
+  const wallLines = walls.map(([id, d]) => {
+    const n = neighbor(qr(id), d);
+    return `  [[${id}], [${n.q}, ${n.r}]],`;
+  });
   const file = `import type { MapSpec, TileSpec } from '../engine/map';
 import type { FactionDef } from '../engine/types';
 
 /**
- * The Claremont Colleges (decision 110), generated by scripts/genClaremont.ts
- * from the campus map: a landlocked six-player board where each college is a
- * faction. The alliances are the athletic conferences: Black = the Stags (CMC,
- * royal, and Harvey Mudd), White = the Sagehens (Pomona, royal, and Pitzer),
- * Green = Scripps (royal) and CGU. Neutral ground is the Consortium, north
- * Pomona and the athletic fields. Every college's home ground has the same
- * number of wheat and raw-material tiles.
+ * The Claremont Colleges (decisions 110-111), generated by scripts/genClaremont.ts
+ * from the campus map: a landlocked board for up to nine leaders where each
+ * college is a faction. Black = the Stags (CMC, royal, Harvey Mudd, KGI), White =
+ * the Sagehens (Pomona, royal, Pitzer, Claremont School of Theology), Green =
+ * Scripps (royal), CGU and the Consortium. Every college has the same number of
+ * wheat and raw-material tiles that only its own farmers can reach.
  * Rows are [q, r, ground (college letter or n), resources (w wheat, t wood, s stone,
  * i iron), city?, starting faction?]. Each college's ground is tinted in its colours.
  */
@@ -231,10 +293,18 @@ const TINTS: Record<string, string> = {
   Z: '#f3c49a', // Pitzer orange
   S: '#a9ccb4', // Scripps green
   G: '#e8aaa8', // CGU red
+  K: '#a9d6d3', // KGI teal
+  T: '#dcc6a6', // Claremont School of Theology tan
+  U: '#cdb9e2', // Consortium purple
 };
 
 const ROWS: Row[] = [
 ${rows.join('\n')}
+];
+
+/** campus walls between different colleges' grounds, drawn as ridges; every third edge is a gate */
+const WALLS: [[number, number], [number, number]][] = [
+${wallLines.join('\n')}
 ];
 
 function build(): MapSpec {
@@ -246,7 +316,7 @@ function build(): MapSpec {
     if (city) t.city = { name: city, slot: slot ?? 'neutral', ...(walls ? { walls: true } : {}) };
     return t;
   });
-  return { id: 'claremont', name: 'The Claremont Colleges', tiles, mountains: [] };
+  return { id: 'claremont', name: 'The Claremont Colleges', tiles, mountains: WALLS.map(([a, b]) => ({ a, b })) };
 }
 
 export const CLAREMONT_MAP: MapSpec = build();
@@ -262,6 +332,9 @@ export const CLAREMONT_FACTIONS: FactionDef[] = [
   { id: 'white-crimson', allianceId: 'white', name: 'Pitzer', color: '#f47b20', royal: false },
   { id: 'green-purple', allianceId: 'green', name: 'Scripps', color: '#3f7f5f', royal: true },
   { id: 'green-rose', allianceId: 'green', name: 'CGU', color: '#c8102e', royal: false },
+  { id: 'black-gold', allianceId: 'black', name: 'KGI', color: '#1b8a84', royal: false },
+  { id: 'white-azure', allianceId: 'white', name: 'Claremont School of Theology', color: '#8a5a2b', royal: false },
+  { id: 'green-teal', allianceId: 'green', name: 'The Consortium', color: '#6a3d9a', royal: false },
 ];
 `;
   writeFileSync('src/data/claremontMap.ts', file);

@@ -141,8 +141,7 @@ export const MAPS: Record<string, PresetMap> = {
   claremont: {
     spec: CLAREMONT_MAP,
     slots: CLAREMONT_SLOTS,
-    description: 'The Claremont Colleges: up to six leaders, one per college. Stags (CMC and Harvey Mudd), Sagehens (Pomona and Pitzer), and Scripps with CGU fight over the Consortium and the athletic fields. Landlocked: no ships.',
+    description: 'The Claremont Colleges: one leader per college. Stags (CMC, Harvey Mudd, KGI), Sagehens (Pomona, Pitzer, Claremont School of Theology), and Scripps with CGU and the Consortium. With six leaders the three graduate and consortium seats stay empty and their cities are neutral. Landlocked: no ships.',
     factions: CLAREMONT_FACTIONS,
-    maxPlayers: 6,
   },
 };
