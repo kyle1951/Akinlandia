@@ -785,3 +785,76 @@ select {
     display: none;
   }
 }
+
+/* Messages and diplomacy (decision 112) */
+.messages h3 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.msg-list {
+  max-height: 220px;
+  overflow-y: auto;
+  font-size: 12px;
+  border: 1px solid #d8c9a6;
+  border-radius: 4px;
+  padding: 4px 6px;
+  background: rgba(255, 255, 255, 0.35);
+}
+.msg {
+  margin: 3px 0;
+  padding-left: 4px;
+  border-left: 3px solid transparent;
+}
+.msg-alliance {
+  border-left-color: #2e8b3d;
+}
+.msg-diplomacy {
+  border-left-color: #8b1a1a;
+}
+.msg-meta {
+  color: var(--ink-soft);
+  font-size: 11px;
+}
+.msg-badge {
+  display: inline-block;
+  font-size: 11px;
+  background: #efe3c6;
+  border: 1px solid #c8b58a;
+  border-radius: 8px;
+  padding: 0 5px;
+  margin-left: 4px;
+}
+.msg-empty {
+  color: var(--ink-soft);
+  font-style: italic;
+}
+.msg-pacts {
+  font-size: 12px;
+  margin-bottom: 4px;
+}
+.msg-broken {
+  color: var(--crimson);
+}
+.msg-proposal {
+  font-size: 12px;
+  background: #f6ecd2;
+  border: 1px solid #c8b58a;
+  border-radius: 4px;
+  padding: 4px 6px;
+  margin-top: 4px;
+}
+.msg-compose {
+  display: flex;
+  gap: 4px;
+  margin-top: 6px;
+}
+.msg-compose input {
+  flex: 1;
+  min-width: 0;
+}
+.msg-general {
+  font-size: 12px;
+  margin-top: 6px;
+}

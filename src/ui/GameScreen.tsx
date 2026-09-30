@@ -13,6 +13,8 @@ import { EndScreen } from './EndScreen';
 import { ResolutionMap } from './ResolutionMap';
 import { BattleScene, isBigBattle, snapshotBattle } from './BattleScene';
 import type { BattleSnapshot } from './BattleScene';
+import { MessagesPanel } from './MessagesPanel';
+import { allianceTarget } from '../engine/messages';
 import type { Controller } from './useGameController';
 
 export function GameScreen({ ctl }: { ctl: Controller }) {
@@ -48,6 +50,14 @@ export function GameScreen({ ctl }: { ctl: Controller }) {
   const battle = battleQueue[0] ?? null;
   const showResolution = !!game.lastResolution && resolutionKey !== seenResolution && hasHuman && !ctl.running && ctl.speed !== 'instant' && !battle;
   const needsPrivacy = !online && humanTurn && pending && isPrivateDecision(pending) && unlocked !== decisionKey && !reveal && !showResolution && !battle;
+
+  // Messages (decision 112): online the viewer speaks; at a shared screen, pick which human is speaking
+  // (by default whoever is deciding). An all-bot game shows every message.
+  const humans = game.seatOrder.filter((p) => !game.players[p].isBot);
+  const [speakerChoice, setSpeakerChoice] = useState<string | null>(null);
+  const speakerId = online ? online.viewerId : speakerChoice && humans.includes(speakerChoice) ? speakerChoice : pending && humans.includes(pending.playerId) ? pending.playerId : (humans[0] ?? null);
+  const speakerAlliance = speakerId ? game.players[speakerId]?.allianceId ?? null : null;
+  const targetMarker = speakerAlliance ? allianceTarget(game, speakerAlliance) : null;
 
   // Big battles play out in the battle scene once the engine has resolved them (presentation only).
   useEffect(() => {
@@ -163,7 +173,7 @@ export function GameScreen({ ctl }: { ctl: Controller }) {
   return (
     <div className="app">
       <div className={`board-area ${landlocked && Object.keys(game.tiles).length ? 'landlocked' : ''}`}>
-        <Board game={game} highlights={board.highlights} onTileClick={board.onTileClick} showCoords={showCoords} arrows={board.arrows} />
+        <Board game={game} highlights={board.highlights} onTileClick={board.onTileClick} showCoords={showCoords} arrows={board.arrows} markers={targetMarker && game.tiles[targetMarker] ? [{ tileId: targetMarker, text: '⚑' }] : []} />
         <div className="topbar">
           <div className="status">
             <b>Akinlandia</b> · {online ? `table ${online.code} · ${online.connected ? 'connected' : 'reconnecting...'}` : `seed ${game.rng.seed}`} · {game.config.setupMode === 'quick' ? 'Quick Start' : 'Full Game'}
@@ -279,6 +289,7 @@ export function GameScreen({ ctl }: { ctl: Controller }) {
         )}
         <StatusPanel game={game} />
         <PlayersPanel game={game} viewerId={online?.viewerId} hostIsYou={online?.hostIsYou} onDelegate={online?.setDelegate} />
+        <MessagesPanel game={game} speakerId={speakerId} speakers={online ? undefined : humans} onSpeaker={setSpeakerChoice} showAll={!online && humans.length === 0} dispatch={ctl.dispatch} />
         <LogPanel log={game.log} />
       </div>
       {needsPrivacy && pending && <PrivacyScreen name={game.players[pending.playerId].leaderName} what={privateWhat(pending)} onContinue={() => setUnlocked(decisionKey)} />}

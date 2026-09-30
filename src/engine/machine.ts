@@ -9,6 +9,7 @@ import type { Action, DecisionKind, GameState, LogEntry, PendingDecision } from 
 import { handleSetupAction, handleSetupTask } from './flowSetup';
 import { handleMilitaryAction, handleMilitaryTask } from './flowMilitary';
 import { handleSimAction, handleSimTask } from './flowSimultaneous';
+import { applySay } from './messages';
 import { handlePoliticsAction, handlePoliticsTask } from './flowPolitics';
 import { handleFullGameAction, handleFullGameTask } from './fullGame';
 
@@ -60,6 +61,13 @@ export function isGameOver(state: GameState): boolean {
 
 /** Mutating variant used by the simulation harness and the bots' lookahead. */
 export function applyActionInPlace(state: GameState, action: Action): LogEntry[] {
+  if (action.kind === 'say') {
+    // a free action (decision 112): allowed at any time, never answers the pending decision
+    const logStart = state.log.length;
+    applySay(state, action);
+    state.actionLog.push(action);
+    return state.log.slice(logStart);
+  }
   const pending = state.pending;
   if (!pending) throw new RulesError('No decision is pending');
   if (action.playerId !== pending.playerId) throw new RulesError(`It is ${pending.playerId}'s decision, not ${action.playerId}'s`);

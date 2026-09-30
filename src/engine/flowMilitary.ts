@@ -11,6 +11,7 @@ import { hasSeaEdge } from './map';
 import { destinationsFrom, movableUnitsAt, orderableSourceTiles, validateOrder } from './rules/movement';
 import { enemySoldiersOnTile, finalControl, retreatOptions, rollSide, shipsLostWithSoldiers } from './rules/combat';
 import { sequentialOrder } from './rules/turnOrder';
+import { noteHostility } from './messages';
 
 // ---------------------------------------------------------------------------
 // Sub-phases and orders
@@ -173,6 +174,7 @@ function taskExecuteOrder(state: GameState, task: Extract<Task, { kind: 'execute
     const enemies = enemySoldiersOnTile(state, g.destTileId, alliance);
     if (enemies.length > 0) {
       const defAlliance = allianceOf(state, enemies[0].ownerId);
+      noteHostility(state, alliance, defAlliance, alliance);
       const cid = `c${state.nextCombatId++}`;
       const mk = (aid: AllianceId, gid: PlayerId, soldierIds: UnitId[], shipIds: UnitId[]): CombatSide => ({
         allianceId: aid,

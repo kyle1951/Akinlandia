@@ -14,7 +14,8 @@ import { legalDestinations, movableUnitsAt, validateOrder } from '../engine/rule
 import { defenderBonusPerSoldier } from '../engine/rules/combat';
 import { CARD_BY_TYPE } from '../data/cards';
 import { hasSeaEdge } from '../engine/map';
-import { neighbor, tileId as mkTileId } from '../engine/hex';
+import { hexDistance, neighbor, tileId as mkTileId } from '../engine/hex';
+import { allianceTarget, jointTargets, trucePartners } from '../engine/messages';
 
 function botRng(state: GameState, pid: PlayerId): RngState {
   const seed = (state.rng.s ^ (state.actionLog.length * 2654435761) ^ (pid.length * 97)) >>> 0;
@@ -83,10 +84,12 @@ export function botAction(state: GameState, pending: PendingDecision): Action {
     case 'placeSoldiers': {
       const counts: Record<string, number> = {};
       const alliance = allianceOf(state, pid);
+      // raise soldiers where they are threatened, and toward the alliance's target (decision 112)
+      const targetId = allianceTarget(state, alliance);
       const tiles = pending.legalTiles.map((id) => ({
         id,
         garrison: allianceSoldiersOn(state, id, alliance).length,
-        threat: enemySoldiersNear(state, state.tiles[id], alliance, 2),
+        threat: enemySoldiersNear(state, state.tiles[id], alliance, 2) + (targetId ? Math.max(0, 3 - hexDistance(state.tiles[id], state.tiles[targetId])) : 0),
         ships: shipsOnTile(state, id).length,
       }));
       for (const id of pending.legalTiles) counts[id] = 0;
@@ -325,10 +328,17 @@ function planFromTile(state: GameState, alliance: AllianceId, src: string, sub: 
   const spare = soldiers.length - keep;
   if (spare <= 0) return null;
   const dests = legalDestinations(state, alliance, src, sub);
+  // coordination (decision 112): the alliance's announced target, truces kept, joint attacks favoured
+  const targetId = allianceTarget(state, alliance);
+  const target = targetId ? state.tiles[targetId] : null;
+  const truce = new Set(trucePartners(state, alliance));
+  const joint = new Set(jointTargets(state, alliance));
   let best: { score: number; dest: string; via: 'land' | 'sea'; count: number } | null = null;
   for (const d of dests) {
     const dt = tile(state, d.tileId);
     const enemies = soldiersOnTile(state, d.tileId).filter((u) => allianceOf(state, u.ownerId) !== alliance);
+    const holder = enemies.length ? allianceOf(state, enemies[0].ownerId) : dt.city?.ownerId ? allianceOf(state, dt.city.ownerId) : null;
+    if (holder && holder !== alliance && truce.has(holder)) continue;
     const enemyFarmers = unitsOnTile(state, d.tileId).some((u) => u.kind === 'farmer' && allianceOf(state, u.ownerId) !== alliance);
     const maxCount = d.via === 'sea' ? Math.min(spare, ships.length) : spare;
     if (maxCount <= 0) continue;
@@ -352,11 +362,15 @@ function planFromTile(state: GameState, alliance: AllianceId, src: string, sub: 
     } else if (enemyFarmers) {
       score = 25;
       count = 1;
+    } else if (target && hexDistance(dt, target) < hexDistance(srcTile, target)) {
+      // march on the alliance's target
+      score = 9 + nextFloat(rng) * 2;
+      count = Math.min(maxCount, Math.max(1, Math.ceil(spare * 0.8)));
     } else {
       // wander toward the nearest foreign city when nothing else is happening
-      const target = nearestForeignCity(state, dt, alliance);
+      const nearest = nearestForeignCity(state, dt, alliance);
       const here = nearestForeignCity(state, srcTile, alliance);
-      if (target !== null && here !== null && target < here) {
+      if (nearest !== null && here !== null && nearest < here) {
         score = 5 + nextFloat(rng) * 3;
         count = Math.min(maxCount, Math.max(1, Math.ceil(spare * 0.75)));
       } else if (nextFloat(rng) < 0.1) {
@@ -364,6 +378,11 @@ function planFromTile(state: GameState, alliance: AllianceId, src: string, sub: 
         count = 1;
       } else continue;
     }
+    if (d.tileId === targetId) {
+      score += 25;
+      count = maxCount;
+    }
+    if (holder && joint.has(holder)) score += 8;
     if (d.via === 'sea') score += 2; // ships are fun
     if (!best || score > best.score) best = { score, dest: d.tileId, via: d.via, count };
   }

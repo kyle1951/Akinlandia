@@ -7,6 +7,7 @@ import { createGame } from '../engine/setup';
 import { applyActionInPlace, isGameOver } from '../engine/machine';
 import { checkInvariants } from '../engine/invariants';
 import { botAction } from './heuristic';
+import { botSays } from './talk';
 
 export interface RunOptions {
   maxActions?: number;
@@ -53,20 +54,47 @@ export function runBots(state: GameState, opts: RunOptions = {}): GameState {
       if (opts.stopAtMax) return state;
       throw new SimulationError(`exceeded ${max} actions`, state.rng.seed, i, null);
     }
-    const action = botAction(state, state.pending);
-    try {
-      applyActionInPlace(state, action);
-    } catch (e) {
-      throw new SimulationError(`${(e as Error).message}\naction: ${JSON.stringify(action)}\npending: ${JSON.stringify(state.pending)}`, state.rng.seed, i, action);
+    for (const action of botTurnActions(state)) {
+      try {
+        applyActionInPlace(state, action);
+      } catch (e) {
+        throw new SimulationError(`${(e as Error).message}\naction: ${JSON.stringify(action)}\npending: ${JSON.stringify(state.pending)}`, state.rng.seed, i, action);
+      }
+      if (opts.checkInvariants) {
+        const errors = checkInvariants(state);
+        if (errors.length) throw new SimulationError(`invariant violation: ${errors.join('; ')}`, state.rng.seed, i, action);
+      }
+      opts.onAction?.(state, action, i);
+      i++;
     }
-    if (opts.checkInvariants) {
-      const errors = checkInvariants(state);
-      if (errors.length) throw new SimulationError(`invariant violation: ${errors.join('; ')}`, state.rng.seed, i, action);
-    }
-    opts.onAction?.(state, action, i);
-    i++;
   }
   return state;
+}
+
+/**
+ * The actions of one bot turn, chosen lazily: whatever the bot has to say
+ * first (decision 112), each message applied before the next is chosen, then
+ * its answer to the pending decision. Apply each action before asking for the
+ * next one.
+ */
+export function* botTurnActions(state: GameState): Generator<Action> {
+  const pid = state.pending!.playerId;
+  for (let k = 0; k < 6; k++) {
+    const say = botSays(state, pid);
+    if (!say) break;
+    yield say;
+  }
+  yield botAction(state, state.pending!);
+}
+
+/** Play one bot turn in place (messages, then the decision); returns the actions applied. */
+export function playBotTurn(state: GameState): Action[] {
+  const done: Action[] = [];
+  for (const action of botTurnActions(state)) {
+    applyActionInPlace(state, action);
+    done.push(action);
+  }
+  return done;
 }
 
 export function runBotGame(seed: number, players: number, opts: RunOptions & { config?: Partial<GameConfig> } = {}): GameState {

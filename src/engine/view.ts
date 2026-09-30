@@ -11,6 +11,7 @@
  */
 import type { AllianceId, GameState, PendingDecision, PlayerId } from './types';
 import { cloneState } from './machine';
+import { canRead } from './messages';
 
 export interface WaitingOn {
   /** omitted for reaction windows so nobody learns who holds a card */
@@ -33,6 +34,11 @@ export function viewForPlayer(state: GameState, viewerId: PlayerId | null): Clie
   v.actionLog = [];
   v.tasks = [];
   v.deck = state.deck.map(() => HIDDEN);
+  // messages, proposals and pacts only reach the leaders they were meant for (decision 112)
+  if (v.messages) v.messages = v.messages.filter((m) => canRead(state, viewerId, m.to));
+  const myAlliance = viewerId ? state.players[viewerId]?.allianceId ?? null : null;
+  if (v.proposals) v.proposals = v.proposals.filter((p) => !!myAlliance && (p.from === myAlliance || p.to === myAlliance));
+  if (v.pacts) v.pacts = v.pacts.filter((p) => !!myAlliance && p.allianceIds.includes(myAlliance));
   // sealed order sheets of other alliances stay secret until they are revealed (decision 109)
   const sim = v.turnData.sim;
   if (sim && sim.stage === 'collect') {

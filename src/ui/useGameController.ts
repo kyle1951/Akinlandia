@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Action, GameConfig, GameState, LogEntry } from '../engine/types';
 import { applyAction, cloneState, createGame, isGameOver } from '../engine';
-import { botAction } from '../bots/heuristic';
-import { runBots } from '../bots/runner';
+import { playBotTurn, runBots } from '../bots/runner';
 
 export type BotSpeed = 'paused' | 'slow' | 'fast' | 'instant';
 const DELAYS: Record<BotSpeed, number> = { paused: -1, slow: 1100, fast: 300, instant: 0 };
@@ -102,8 +101,21 @@ export function useGameController(): Controller {
     const delay = DELAYS[speed];
     if (delay < 0) return;
     const t = setTimeout(() => {
-      const action = botAction(game, pending);
-      dispatch(action);
+      // one bot turn: its messages first (decision 112), then its decision
+      setGame((g) => {
+        if (!g || !g.pending || !g.players[g.pending.playerId].isBot) return g;
+        const next = cloneState(g);
+        const start = next.log.length;
+        try {
+          playBotTurn(next);
+        } catch (e) {
+          setError((e as Error).message);
+          return g;
+        }
+        setEvents(next.log.slice(start));
+        save(next);
+        return next;
+      });
     }, delay);
     return () => clearTimeout(t);
   }, [game, speed, running, dispatch]);

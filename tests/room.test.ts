@@ -14,6 +14,31 @@ function table() {
 }
 
 describe('online room', () => {
+  it('lets a seated leader send messages when it is not their decision, and replays them', () => {
+    const room = table();
+    room.handle(HOST, {
+      type: 'configure',
+      seats: [
+        { name: 'A', leaderName: 'A', isBot: false },
+        { name: 'B', leaderName: 'B', isBot: false },
+        { name: 'C', leaderName: 'C', isBot: true },
+      ],
+      setupMode: 'quick',
+      alwaysPromptReactions: false,
+    });
+    room.handle(HOST, { type: 'claim', seat: 0, name: 'A', leaderName: 'A the Great' });
+    room.handle(GUEST, { type: 'claim', seat: 1, name: 'B', leaderName: 'B the Bald' });
+    const rows: LogRow[] = [...room.handle(HOST, { type: 'start' }).rows];
+    const guest = room.playerIdFor(GUEST)!;
+    expect(room.state!.pending?.playerId).not.toBe(guest);
+    const res = room.handle(GUEST, { type: 'action', action: { kind: 'say', playerId: guest, to: { kind: 'all' }, text: 'Hello, table.' } });
+    expect(res.reply).toBeUndefined();
+    rows.push(...res.rows);
+    expect(room.viewFor(HOST)!.messages?.map((m) => m.text)).toContain('Hello, table.');
+    const rebuilt = new Room(room.record, rows, () => 77);
+    expect(rebuilt.state!.messages?.map((m) => m.text)).toEqual(room.state!.messages?.map((m) => m.text));
+  });
+
   it('carries the house rules from the lobby into the game config', () => {
     const room = table();
     room.handle(HOST, {

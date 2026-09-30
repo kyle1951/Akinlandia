@@ -166,6 +166,55 @@ export const SIM_ROUNDS: readonly SubPhase[] = ['ships', 'full'];
 /** 'sequential' (the rules document: one order at a time) or 'simultaneous' (decision 109: secret orders, resolved together) */
 export type MilitaryMode = 'sequential' | 'simultaneous';
 
+// ---------------------------------------------------------------------------
+// Messages and diplomacy (decision 112)
+// ---------------------------------------------------------------------------
+
+/** Who can read a message: everyone, one alliance, or the two alliances in a diplomatic exchange. */
+export type MessageAudience = { kind: 'all' } | { kind: 'alliance'; allianceId: AllianceId } | { kind: 'diplomacy'; allianceIds: [AllianceId, AllianceId] };
+
+/** What a message means to the bots, besides its text. */
+export type MessageIntent =
+  /** the General names the alliance's objective for the turn */
+  | { kind: 'target'; tileId: TileId }
+  /** a General proposes a pact to another alliance's General */
+  | { kind: 'propose'; proposalId: string; pact: PactKind; targetAllianceId?: AllianceId; turns: number }
+  | { kind: 'reply'; proposalId: string; accept: boolean };
+
+export interface Message {
+  seq: number;
+  turn: number;
+  fromId: PlayerId;
+  to: MessageAudience;
+  text: string;
+  intent?: MessageIntent;
+}
+
+/** A truce (no attacks on each other) or a joint attack on a third alliance. Never enforced by the rules. */
+export type PactKind = 'truce' | 'joint';
+
+export interface Proposal {
+  id: string;
+  pact: PactKind;
+  from: AllianceId;
+  to: AllianceId;
+  targetAllianceId?: AllianceId;
+  turns: number;
+  turn: number;
+  status: 'open' | 'accepted' | 'declined';
+}
+
+export interface Pact {
+  id: string;
+  kind: PactKind;
+  allianceIds: [AllianceId, AllianceId];
+  targetAllianceId?: AllianceId;
+  /** in force through the end of this turn */
+  untilTurn: number;
+  /** set when one side attacked the other during a truce */
+  broken?: { turn: number; byAllianceId: AllianceId | null };
+}
+
 /** One tile's orders within a General's secret order sheet. */
 export interface SheetOrder {
   sourceTileId: TileId;
@@ -418,6 +467,8 @@ export type Action =
   | { kind: 'scuttle'; playerId: PlayerId; unitIds: UnitId[] }
   | { kind: 'pass'; playerId: PlayerId }
   | { kind: 'submitOrders'; playerId: PlayerId; orders: SheetOrder[]; scuttle: UnitId[] }
+  /** a free action (decision 112): any leader may speak at any time; it never answers a decision */
+  | { kind: 'say'; playerId: PlayerId; to: MessageAudience; text: string; intent?: MessageIntent }
   | { kind: 'react'; playerId: PlayerId; play: boolean }
   | { kind: 'assignCasualties'; playerId: PlayerId; unitIds: UnitId[] }
   | { kind: 'retreat'; playerId: PlayerId; moves: { unitId: UnitId; tileId: TileId }[] }
@@ -608,6 +659,10 @@ export interface GameState {
   };
   /** the most recent simultaneous round's outcome, for the resolution map */
   lastResolution?: ResolutionReport | null;
+  /** messages, proposals and pacts (decision 112); absent in games saved before they existed */
+  messages?: Message[];
+  proposals?: Proposal[];
+  pacts?: Pact[];
   endTotal: number;
   tasks: Task[];
   pending: PendingDecision | null;

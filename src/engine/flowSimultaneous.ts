@@ -28,6 +28,7 @@ import { allianceName, allianceOf, generalOf, shipsOnTile, soldiersOnTile, tile,
 import { destinationsFrom, orderableSourceTiles, validateOrder } from './rules/movement';
 import { rollSide } from './rules/combat';
 import { describeGroup, destroyEnemyFarmers, pairForSea, seizeShips, subPhaseName } from './flowMilitary';
+import { noteHostility } from './messages';
 
 function sim(state: GameState): SimRoundState {
   const s = state.turnData.sim;
@@ -233,6 +234,7 @@ function newCombat(state: GameState, mode: 'assault' | 'border' | 'contest', til
     mode,
   };
   state.turnData.combats[id] = c;
+  noteHostility(state, c.attacker.allianceId, defender.allianceId, mode === 'assault' ? c.attacker.allianceId : null);
   for (const f of attackers) {
     f.status = 'engaged';
     f.combatIds.push(id);
