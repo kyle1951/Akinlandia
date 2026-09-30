@@ -46,8 +46,8 @@ npm run deploy     # vite build + wrangler deploy (needs `npx wrangler login` on
     `handleXAction`; `machine.ts` chains them.
   - `rules/` pure rule helpers used by both the flows and the bots: `turnOrder`, `allocation`, `deploy`,
     `movement`, `combat`, `politics`, `scoring`.
-  - `messages.ts` messages and diplomacy (decision 112): the `say` free action (allowed at any time,
-    never answers a decision), targets, proposals, pacts, `noteHostility` when truce partners fight.
+  - `messages.ts` messages (decisions 112, 114): the `say` free action (allowed at any time, never
+    answers a decision), channels and the General's target. Diplomacy is words only; the engine keeps no pacts.
   - `query.ts` read-only helpers; `core.ts` mutation helpers (log, task queue, units, cards, reaction
     candidates); `map.ts` builds tiles from a compact spec and validates edge consistency; `hex.ts` axial
     coordinates (flat-top; direction i is edge i; the neighbour sees edge (i+3)%6); `rng.ts` mulberry32
@@ -59,7 +59,8 @@ npm run deploy     # vite build + wrangler deploy (needs `npx wrangler login` on
   decision 113), `tileBag.ts`
   (Full Game tiles), `cards.ts` (the Appendix deck table), `factions.ts`.
 - `src/bots/heuristic.ts` answers every `PendingDecision` kind; `talk.ts` decides what a bot says before
-  deciding (`botSays`, applied one message at a time by `botTurnActions`); `runner.ts` runs bot games, replays action
+  deciding (`botSays`, applied one message at a time by `botTurnActions`) and reads diplomacy in plain words
+  (`understandings`); `runner.ts` runs bot games, replays action
   logs and is the harness the tests and the UI's "run to end" use. Bot randomness derives from
   `state.rng.s` and the action count without advancing the game's RNG, so replays stay exact.
 - `src/ui/` React: `useGameController` (state, autosave to localStorage, bot pacing, run-to-end,

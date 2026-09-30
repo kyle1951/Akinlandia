@@ -254,3 +254,14 @@ Both are off by default and are switched on in the setup screen or the online lo
       - Six leaders: CMS 82%, Sagehens 11%, Grad Schools 7%. With six, the third nations (Scripps, Pomona South, the Consortium) stay empty, and their cities, next to CMC and Mudd, are free for the taking.
       - The map is built for nine. Tune it before using it with fewer.
       - Layouts tried on the way: CMC in the middle gave CMS 12% of nine-player games; CMC alone in the east with KGI in the middle gave CMS 55%.
+
+114. **Diplomacy is by word only** (requested 2026-09-30; replaces the formal proposals and pacts of decision 112). The table wanted diplomacy as at a real table: nothing formalized, nothing binding.
+    - **What was removed.** The rules no longer record proposals, answers or pacts. There are no Accept or Decline buttons, no list of pacts in force, and no automatic announcement when a truce is broken. A message is just words, on one of three channels (everyone, one's own alliance, one other alliance), and anyone may say anything there.
+    - **The one structure kept** is the General's target for the alliance (⚑ on the board). It is an order to one's own side, not diplomacy, and it is how a human General steers bot allies.
+    - **How bots read diplomacy.** Bots read diplomacy messages in plain words, from humans and bots alike:
+      - an offer of a truce ("truce", "peace", "ceasefire", "don't attack"...);
+      - an offer of a joint attack (an alliance or one of its factions named alongside "join", "against", "attack"...);
+      - a length ("two turns"; two by default, at most three);
+      - an answer ("agreed", "yes", "deal", "ok" / "no", "never", "not a chance"...). A yes or no answers the latest open offer from the other side, and a later answer overrides an earlier one.
+    - **Bots' own words.** A bot's own offers and answers carry a hidden note of what it meant, which is only its memory of its own words. What a bot believes was agreed is rebuilt from the messages each time it decides (`understandings` in `src/bots/talk.ts`).
+    - **Bots are not bound either.** They keep the peace with an alliance they have an understanding with, but take a city of theirs that lies undefended (no fresh defender). They prefer the target of an agreed joint attack. When an alliance that gave its word attacks them, they stop trusting it and say so in public ("So much for the word of the Green alliance").

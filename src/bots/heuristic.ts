@@ -15,7 +15,8 @@ import { defenderBonusPerSoldier } from '../engine/rules/combat';
 import { CARD_BY_TYPE } from '../data/cards';
 import { hasSeaEdge } from '../engine/map';
 import { hexDistance, neighbor, tileId as mkTileId } from '../engine/hex';
-import { allianceTarget, jointTargets, trucePartners } from '../engine/messages';
+import { allianceTarget } from '../engine/messages';
+import { understandings } from './talk';
 
 function botRng(state: GameState, pid: PlayerId): RngState {
   const seed = (state.rng.s ^ (state.actionLog.length * 2654435761) ^ (pid.length * 97)) >>> 0;
@@ -328,17 +329,19 @@ function planFromTile(state: GameState, alliance: AllianceId, src: string, sub: 
   const spare = soldiers.length - keep;
   if (spare <= 0) return null;
   const dests = legalDestinations(state, alliance, src, sub);
-  // coordination (decision 112): the alliance's announced target, truces kept, joint attacks favoured
+  // coordination (decision 112): the alliance's announced target, its word kept, joint attacks favoured
   const targetId = allianceTarget(state, alliance);
   const target = targetId ? state.tiles[targetId] : null;
-  const truce = new Set(trucePartners(state, alliance));
-  const joint = new Set(jointTargets(state, alliance));
+  // what the alliance believes it has agreed by word (decision 114): kept, unless a city lies there undefended
+  const agreed = understandings(state, alliance);
+  const truce = new Set(agreed.truce);
+  const joint = new Set(agreed.joint);
   let best: { score: number; dest: string; via: 'land' | 'sea'; count: number } | null = null;
   for (const d of dests) {
     const dt = tile(state, d.tileId);
     const enemies = soldiersOnTile(state, d.tileId).filter((u) => allianceOf(state, u.ownerId) !== alliance);
     const holder = enemies.length ? allianceOf(state, enemies[0].ownerId) : dt.city?.ownerId ? allianceOf(state, dt.city.ownerId) : null;
-    if (holder && holder !== alliance && truce.has(holder)) continue;
+    if (holder && holder !== alliance && truce.has(holder) && !(dt.city && enemies.every((e) => e.spent))) continue;
     const enemyFarmers = unitsOnTile(state, d.tileId).some((u) => u.kind === 'farmer' && allianceOf(state, u.ownerId) !== alliance);
     const maxCount = d.via === 'sea' ? Math.min(spare, ships.length) : spare;
     if (maxCount <= 0) continue;

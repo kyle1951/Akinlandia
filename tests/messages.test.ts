@@ -1,16 +1,18 @@
 import { describe, expect, it } from 'vitest';
 import { applyAction } from '../src/engine/machine';
-import { allianceTarget, noteHostility, trucePartners } from '../src/engine/messages';
+import { allianceTarget } from '../src/engine/messages';
 import { viewForPlayer } from '../src/engine/view';
 import { destinationsFrom } from '../src/engine/rules/movement';
 import { botAction } from '../src/bots/heuristic';
+import { botSays, understandings } from '../src/bots/talk';
 import { runBotGame } from '../src/bots/runner';
 import { act, addUnit, clearUnits, generalOf, newGame, playerOf, setActing, toMilitary } from './helpers';
-import type { GameState, MessageAudience, MessageIntent } from '../src/engine/types';
+import type { CombatRecord, GameState, MessageAudience, MessageIntent } from '../src/engine/types';
 
 const say = (s: GameState, playerId: string, to: MessageAudience, text: string, intent?: MessageIntent) => act(s, { kind: 'say', playerId, to, text, ...(intent ? { intent } : {}) });
+const WB: MessageAudience = { kind: 'diplomacy', allianceIds: ['white', 'black'] };
 
-describe('messages and diplomacy (decision 112)', () => {
+describe('messages (decisions 112, 114)', () => {
   it('lets any leader speak at any time without answering the pending decision', () => {
     const s = newGame(3, 1);
     const pending = s.pending;
@@ -29,12 +31,9 @@ describe('messages and diplomacy (decision 112)', () => {
     expect(() => applyAction(s, { kind: 'say', playerId: white, to: { kind: 'all' }, text: 'x'.repeat(281) })).toThrow();
     say(s, white, { kind: 'alliance', allianceId: 'white' }, 'Our plan');
     say(s, white, { kind: 'diplomacy', allianceIds: ['white', 'green'] }, 'Hello Green');
-    const blackView = viewForPlayer(s, black);
-    expect(blackView.messages?.map((m) => m.text)).toEqual([]);
-    const spectator = viewForPlayer(s, null);
-    expect(spectator.messages ?? []).toEqual([]);
-    const green = playerOf(s, 'green');
-    expect(viewForPlayer(s, green).messages?.map((m) => m.text)).toEqual(['Hello Green']);
+    expect(viewForPlayer(s, black).messages?.map((m) => m.text)).toEqual([]);
+    expect(viewForPlayer(s, null).messages ?? []).toEqual([]);
+    expect(viewForPlayer(s, playerOf(s, 'green')).messages?.map((m) => m.text)).toEqual(['Hello Green']);
   });
 
   it('records a General’s target, which bots read as the alliance objective', () => {
@@ -45,49 +44,82 @@ describe('messages and diplomacy (decision 112)', () => {
     expect(allianceTarget(s, 'white')).toBe(city.id);
   });
 
-  it('only Generals propose and answer pacts; an accepted truce is in force and a battle breaks it', () => {
+  it('diplomacy is only words: an offer and its answer leave nothing in the rules, only in what bots understand', () => {
     const s = newGame(3, 1);
-    const gw = generalOf(s, 'white');
-    const gb = generalOf(s, 'black');
-    const intent: MessageIntent = { kind: 'propose', proposalId: 'p1', pact: 'truce', turns: 2 };
-    const to: MessageAudience = { kind: 'diplomacy', allianceIds: ['white', 'black'] };
-    const whiteMember = s.seatOrder.find((p) => s.players[p].allianceId === 'white' && p !== gw);
-    if (whiteMember) expect(() => applyAction(s, { kind: 'say', playerId: whiteMember, to, text: 'truce?', intent })).toThrow();
-    say(s, gw, to, 'A truce?', intent);
-    expect(() => applyAction(s, { kind: 'say', playerId: gw, to, text: 'yes', intent: { kind: 'reply', proposalId: 'p1', accept: true } })).toThrow(/Only the General who received/);
-    say(s, gb, to, 'Agreed.', { kind: 'reply', proposalId: 'p1', accept: true });
-    expect(trucePartners(s, 'white')).toEqual(['black']);
-    noteHostility(s, 'white', 'black', 'white');
-    expect(trucePartners(s, 'white')).toEqual([]);
-    expect(s.pacts?.[0].broken).toMatchObject({ byAllianceId: 'white' });
+    const white = playerOf(s, 'white');
+    const black = playerOf(s, 'black');
+    const before = JSON.stringify({ ...s, messages: undefined, actionLog: undefined });
+    say(s, white, WB, 'Black, a truce for two turns?');
+    expect(understandings(s, 'white').truce).toEqual([]);
+    say(s, black, WB, 'Agreed, peace it is.');
+    expect(JSON.stringify({ ...s, messages: undefined, actionLog: undefined })).toBe(before);
+    expect(understandings(s, 'white').truce).toEqual(['black']);
+    expect(understandings(s, 'black').truce).toEqual(['white']);
+    say(s, white, { kind: 'diplomacy', allianceIds: ['white', 'green'] }, 'Green, join us against the Black alliance?');
+    say(s, playerOf(s, 'green'), { kind: 'diplomacy', allianceIds: ['green', 'white'] }, 'No.');
+    expect(understandings(s, 'green').joint).toEqual([]);
   });
 
-  it('bots do not attack an alliance they have a truce with', () => {
-    const plan = (truce: boolean) => {
+  it('a bot General answers an offer made in plain words, and what it says is what it believes', () => {
+    const s = newGame(3, 1);
+    say(s, playerOf(s, 'white'), WB, 'Hey Black, how about a ceasefire for one turn?');
+    const reply = botSays(s, generalOf(s, 'black'));
+    expect(reply).toMatchObject({ kind: 'say', to: { kind: 'diplomacy' }, intent: { kind: 'reply' } });
+    act(s, reply!);
+    const accepted = reply!.kind === 'say' && reply!.intent?.kind === 'reply' && reply!.intent.accept;
+    expect(understandings(s, 'black').truce.includes('white')).toBe(accepted);
+  });
+
+  it('bots keep their word, except when a city lies undefended', () => {
+    const plan = (truce: boolean, undefendedCity: boolean) => {
       const s = newGame(3, 1);
       toMilitary(s, 'full1');
       clearUnits(s);
-      // three Black soldiers with a White soldier on every land side: without a truce they must attack one
-      const from = Object.values(s.tiles).find((t) => !t.city && destinationsFrom(s, t.id).filter((d) => d.via === 'land').length >= 2)!;
+      const from = Object.values(s.tiles).find((t) => !t.city && destinationsFrom(s, t.id).filter((d) => d.via === 'land').length >= 2 && destinationsFrom(s, t.id).some((d) => d.via === 'land' && s.tiles[d.tileId].city))!;
       const around = destinationsFrom(s, from.id).filter((d) => d.via === 'land').map((d) => d.tileId);
+      const city = around.find((t) => s.tiles[t].city)!;
       const black = playerOf(s, 'black');
+      const white = playerOf(s, 'white');
       for (let i = 0; i < 3; i++) addUnit(s, 'soldier', black, from.id);
-      for (const t of around) addUnit(s, 'soldier', playerOf(s, 'white'), t);
-      if (truce) s.pacts = [{ id: 't', kind: 'truce', allianceIds: ['white', 'black'], untilTurn: s.turn + 1 }];
+      for (const t of around) if (!(undefendedCity && t === city)) addUnit(s, 'soldier', white, t);
+      s.tiles[city].city!.ownerId = white;
+      if (truce) {
+        say(s, generalOf(s, 'white'), WB, 'A truce for two turns?');
+        say(s, generalOf(s, 'black'), WB, 'Agreed.');
+      }
       setActing(s, 'black');
       const a = botAction(s, s.pending!);
-      return a.kind === 'order' && a.groups.some((g) => around.includes(g.destTileId));
+      return a.kind === 'order' ? a.groups.map((g) => g.destTileId).filter((d) => around.includes(d)) : [];
     };
-    expect(plan(false)).toBe(true);
-    expect(plan(true)).toBe(false);
+    expect(plan(false, false).length).toBeGreaterThan(0);
+    expect(plan(true, false)).toEqual([]);
+    expect(plan(true, true).length).toBeGreaterThan(0);
   });
 
-  it('bots talk, name targets and make and answer proposals in real games', () => {
+  it('a betrayed bot says so in public and stops trusting the betrayer', () => {
+    const s = newGame(3, 1);
+    say(s, generalOf(s, 'white'), WB, 'A truce for two turns?');
+    say(s, generalOf(s, 'black'), WB, 'Agreed.');
+    expect(understandings(s, 'black').truce).toEqual(['white']);
+    s.turnData.combats = { c1: { attacker: { allianceId: 'white' }, defender: { allianceId: 'black' } } as unknown as CombatRecord };
+    expect(understandings(s, 'black').truce).toEqual([]);
+    const black = generalOf(s, 'black');
+    let line = '';
+    for (let i = 0; i < 6 && !line; i++) {
+      const m = botSays(s, black);
+      if (!m) break;
+      act(s, m);
+      if (m.kind === 'say' && m.to.kind === 'all') line = m.text;
+    }
+    expect(line).toMatch(/word|betrayal|promise/);
+  });
+
+  it('bots talk, name targets and make and answer offers in real games', () => {
     const s = runBotGame(7, 6, { config: { militaryMode: 'simultaneous' }, checkInvariants: true });
     const kinds = new Set((s.messages ?? []).map((m) => m.intent?.kind ?? m.to.kind));
     expect(kinds.has('target')).toBe(true);
     expect(kinds.has('all')).toBe(true);
-    expect((s.proposals ?? []).length).toBeGreaterThan(0);
-    expect((s.proposals ?? []).every((p) => p.status !== 'open' || p.turn >= s.turn - 1)).toBe(true);
+    expect(kinds.has('propose')).toBe(true);
+    expect(kinds.has('reply')).toBe(true);
   });
 });

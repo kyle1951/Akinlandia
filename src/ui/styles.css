@@ -854,6 +854,11 @@ select {
   flex: 1;
   min-width: 0;
 }
+.msg-hint {
+  font-size: 11px;
+  color: var(--ink-soft);
+  margin-top: 4px;
+}
 .msg-general {
   font-size: 12px;
   margin-top: 6px;

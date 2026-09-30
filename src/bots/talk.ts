@@ -1,17 +1,23 @@
 /**
- * What the bots say (decision 112). Before each of its decisions a bot may
- * speak: a General names the alliance's target for the turn and sometimes
- * proposes a pact to another alliance, answers proposals made to it, and any
- * bot may add a line of public table talk about the last turn. Everything is
- * derived from the game state, so bot games stay deterministic.
+ * What the bots say, and what they make of what others say (decisions 112, 114).
+ *
+ * Before each of its decisions a bot may speak: a General names the alliance's
+ * target for the turn, answers offers made to its alliance, and now and then
+ * makes one; any bot may add a line of public table talk. Diplomacy is by word
+ * only. Bots read diplomacy messages in plain words (from humans and bots
+ * alike): an offer of a truce or of a joint attack on a third alliance, and an
+ * answer of yes or no. What they believe was agreed is their own understanding,
+ * rebuilt from the messages; nothing binds them, and they break their word when
+ * an undefended city is there for the taking. Everything is derived from the
+ * game state, so bot games stay deterministic.
  */
-import type { Action, AllianceId, GameState, Message, PlayerId, Proposal, Tile } from '../engine/types';
+import type { Action, AllianceId, GameState, Message, PactKind, PlayerId, Tile } from '../engine/types';
 import { createRng, nextFloat, nextInt } from '../engine/rng';
 import type { RngState } from '../engine/rng';
 import { allianceName, allianceOf, cityCount, membersOf, soldiersOnTile } from '../engine/query';
 import { hexDistance } from '../engine/hex';
 import { tileLabel } from '../engine/map';
-import { activePacts, isGeneralOf, jointTargets, openProposals, trucePartners } from '../engine/messages';
+import { isGeneralOf } from '../engine/messages';
 
 function talkRng(state: GameState, pid: PlayerId): RngState {
   let h = 2166136261;
@@ -20,11 +26,7 @@ function talkRng(state: GameState, pid: PlayerId): RngState {
 }
 
 const pick = <T,>(rng: RngState, xs: T[]): T => xs[nextInt(rng, xs.length)];
-
-function speaker(state: GameState, pid: PlayerId): string {
-  const p = state.players[pid];
-  return p.factionId ? `${p.leaderName} of ${state.factions[p.factionId].name}` : p.leaderName;
-}
+const ALLIANCES: AllianceId[] = ['white', 'black', 'green'];
 
 /** An alliance's strength for diplomacy: the cities its members hold. */
 function strength(state: GameState, a: AllianceId): number {
@@ -32,17 +34,152 @@ function strength(state: GameState, a: AllianceId): number {
 }
 
 function liveAlliances(state: GameState): AllianceId[] {
-  return state.allianceOrder.length ? [...state.allianceOrder] : (['white', 'black', 'green'] as AllianceId[]).filter((a) => membersOf(state, a).length > 0);
+  return ALLIANCES.filter((a) => membersOf(state, a).length > 0);
 }
+
+// ---------------------------------------------------------------------------
+// Reading diplomacy
+// ---------------------------------------------------------------------------
+
+/** An offer as the bots understand it, whether a bot noted it or they read it in a human's words. */
+export interface Offer {
+  id: string;
+  from: AllianceId;
+  to: AllianceId;
+  pact: PactKind;
+  targetAllianceId?: AllianceId;
+  turns: number;
+  turn: number;
+  seq: number;
+}
+
+const TRUCE = /\b(truce|peace|cease-?fire|non-?aggression|leave (us|each other) alone|don'?t attack|stop attacking|stand down|friends?)\b/i;
+const JOINT = /\b(join|together|team up|gang up|against|attack|strike|march on|help us|with us)\b/i;
+const YES = /\b(agreed?|yes|yeah|yep|deal|accept(ed)?|ok(ay)?|sure|done|fine|very well|you have our word)\b/i;
+const NO = /\b(no|nope|decline[sd]?|never|refuse[sd]?|not a chance|reject(ed)?)\b/i;
+const WORD_TURNS: Record<string, number> = { one: 1, two: 2, three: 3, a: 1 };
+
+/** Alliances named in a text, by alliance name or by the name of one of their factions. */
+function alliancesNamed(state: GameState, text: string): AllianceId[] {
+  const t = text.toLowerCase();
+  return ALLIANCES.filter((a) => t.includes(allianceName(a).toLowerCase()) || Object.values(state.factions).some((f) => f.allianceId === a && f.name.length > 3 && t.includes(f.name.toLowerCase())));
+}
+
+function turnsIn(text: string): number {
+  const m = text.toLowerCase().match(/\b(\d|one|two|three|a)\s+(more\s+)?turns?\b/);
+  if (!m) return 2;
+  const n = WORD_TURNS[m[1]] ?? Number(m[1]);
+  return Math.max(1, Math.min(3, n || 2));
+}
+
+function sides(state: GameState, m: Message): { from: AllianceId; to: AllianceId } | null {
+  if (m.to.kind !== 'diplomacy') return null;
+  const from = state.players[m.fromId]?.allianceId;
+  if (!from) return null;
+  const to = m.to.allianceIds[0] === from ? m.to.allianceIds[1] : m.to.allianceIds[0];
+  return { from, to };
+}
+
+/** What a diplomacy message offers, if anything. */
+function offerIn(state: GameState, m: Message): Offer | null {
+  const s = sides(state, m);
+  if (!s) return null;
+  if (m.intent?.kind === 'propose') return { id: m.intent.proposalId, ...s, pact: m.intent.pact, targetAllianceId: m.intent.targetAllianceId, turns: m.intent.turns, turn: m.turn, seq: m.seq };
+  if (m.intent) return null;
+  const third = alliancesNamed(state, m.text).find((a) => a !== s.from && a !== s.to);
+  if (third && JOINT.test(m.text)) return { id: `m${m.seq}`, ...s, pact: 'joint', targetAllianceId: third, turns: turnsIn(m.text), turn: m.turn, seq: m.seq };
+  if (TRUCE.test(m.text)) return { id: `m${m.seq}`, ...s, pact: 'truce', turns: turnsIn(m.text), turn: m.turn, seq: m.seq };
+  return null;
+}
+
+/** Whether a diplomacy message says yes or no (the first of the two it contains), or neither. */
+function answerIn(m: Message): boolean | null {
+  if (m.intent?.kind === 'reply') return m.intent.accept;
+  if (m.intent) return null;
+  const yes = m.text.search(YES);
+  const no = m.text.search(NO);
+  if (yes < 0 && no < 0) return null;
+  if (no < 0) return true;
+  if (yes < 0) return false;
+  return yes < no;
+}
+
+interface Understanding {
+  offer: Offer;
+  /** null while unanswered */
+  accepted: boolean | null;
+  /** turn of the latest answer */
+  answeredTurn: number;
+}
+
+/** Offers made to or by an alliance in the last few turns, with the latest word on each. */
+function readDiplomacy(state: GameState, a: AllianceId): Understanding[] {
+  const out: Understanding[] = [];
+  for (const m of state.messages ?? []) {
+    if (m.turn < state.turn - 4) continue;
+    const s = sides(state, m);
+    if (!s || (s.from !== a && s.to !== a)) continue;
+    // a yes or no answers the offer it names, else the latest open offer from the other side
+    // ("Agreed, peace it is" answers an offer of peace rather than making a new one)
+    const verdict = answerIn(m);
+    const target =
+      verdict === null
+        ? undefined
+        : m.intent?.kind === 'reply'
+          ? out.find((u) => u.offer.id === (m.intent as { proposalId: string }).proposalId)
+          : [...out].reverse().find((u) => u.offer.from === s.to && u.offer.to === s.from && (u.accepted === null || m.turn > u.answeredTurn));
+    if (target) {
+      target.accepted = verdict;
+      target.answeredTurn = m.turn;
+      continue;
+    }
+    const offer = offerIn(state, m);
+    if (offer) out.push({ offer, accepted: null, answeredTurn: -1 });
+  }
+  return out;
+}
+
+/** What an alliance's bots believe they have agreed and not yet seen broken: truces and joint attacks. */
+export function understandings(state: GameState, a: AllianceId): { truce: AllianceId[]; joint: AllianceId[] } {
+  const truce = new Set<AllianceId>();
+  const joint = new Set<AllianceId>();
+  for (const u of readDiplomacy(state, a)) {
+    if (!u.accepted || state.turn > u.answeredTurn + u.offer.turns) continue;
+    const other = u.offer.from === a ? u.offer.to : u.offer.from;
+    if (u.offer.pact === 'truce') truce.add(other);
+    else if (u.offer.targetAllianceId) joint.add(u.offer.targetAllianceId);
+  }
+  for (const b of betrayers(state, a)) truce.delete(b);
+  return { truce: [...truce], joint: [...joint] };
+}
+
+/** Alliances that attacked this one this turn. */
+function attackersOf(state: GameState, a: AllianceId): AllianceId[] {
+  return [...new Set(Object.values(state.turnData.combats ?? {}).filter((c) => c.defender.allianceId === a && c.attacker.allianceId !== a).map((c) => c.attacker.allianceId))];
+}
+
+/** Alliances that gave their word of peace and attacked this turn anyway. */
+function betrayers(state: GameState, a: AllianceId): AllianceId[] {
+  const attackers = attackersOf(state, a);
+  if (attackers.length === 0) return [];
+  const promised = new Set<AllianceId>();
+  for (const u of readDiplomacy(state, a)) {
+    if (u.accepted && u.offer.pact === 'truce' && state.turn <= u.answeredTurn + u.offer.turns) promised.add(u.offer.from === a ? u.offer.to : u.offer.from);
+  }
+  return attackers.filter((x) => promised.has(x));
+}
+
+// ---------------------------------------------------------------------------
+// Speaking
+// ---------------------------------------------------------------------------
 
 /**
  * The alliance's objective: the nearest city it does not hold, preferring
- * neutral and lightly held ones, skipping truce partners and favouring the
- * target of a joint attack.
+ * neutral and lightly held ones, sparing those it has promised peace and
+ * favouring the target of an agreed joint attack.
  */
 export function chooseTarget(state: GameState, a: AllianceId): Tile | null {
-  const truce = new Set(trucePartners(state, a));
-  const joint = new Set(jointTargets(state, a));
+  const { truce, joint } = understandings(state, a);
   const mine: Tile[] = [];
   for (const t of Object.values(state.tiles)) if (t.city?.ownerId && allianceOf(state, t.city.ownerId) === a) mine.push(t);
   for (const u of Object.values(state.units)) if (u.kind === 'soldier' && allianceOf(state, u.ownerId) === a) mine.push(state.tiles[u.tileId]);
@@ -51,33 +188,34 @@ export function chooseTarget(state: GameState, a: AllianceId): Tile | null {
   for (const t of Object.values(state.tiles)) {
     if (!t.city) continue;
     const owner = t.city.ownerId ? allianceOf(state, t.city.ownerId) : null;
-    if (owner === a || (owner && truce.has(owner))) continue;
+    if (owner === a || (owner && truce.includes(owner))) continue;
     const dist = Math.min(...mine.map((m) => hexDistance(m, t)));
     const defenders = soldiersOnTile(state, t.id).filter((u) => allianceOf(state, u.ownerId) !== a).length;
-    const score = dist * 3 + defenders * 2 - (owner === null ? 3 : 0) - (owner && joint.has(owner) ? 4 : 0) - t.city.level;
+    const score = dist * 3 + defenders * 2 - (owner === null ? 3 : 0) - (owner && joint.includes(owner) ? 4 : 0) - t.city.level;
     if (!best || score < best.score || (score === best.score && t.id < best.t.id)) best = { t, score };
   }
   return best?.t ?? null;
 }
 
-function proposalFor(state: GameState, a: AllianceId, rng: RngState, pid: PlayerId): Action | null {
+function makeOffer(state: GameState, a: AllianceId, rng: RngState, pid: PlayerId): Action | null {
   const others = liveAlliances(state).filter((x) => x !== a);
   if (others.length < 2) return null;
-  const pacted = new Set(activePacts(state, a).flatMap((p) => p.allianceIds));
+  const { truce, joint } = understandings(state, a);
   const byStrength = [...liveAlliances(state)].sort((x, y) => strength(state, y) - strength(state, x));
   const leader = byStrength[0];
-  const id = `p${state.turn}-${a}-${(state.proposals?.length ?? 0) + 1}`;
-  if (leader !== a && strength(state, leader) > strength(state, a)) {
-    const partner = others.find((x) => x !== leader && !pacted.has(x));
+  const id = `p${state.turn}-${a}-${state.messages?.length ?? 0}`;
+  if (leader !== a && strength(state, leader) > strength(state, a) && !joint.includes(leader)) {
+    const partner = others.find((x) => x !== leader);
     if (!partner) return null;
+    const L = allianceName(leader);
     const text = pick(rng, [
-      `The ${allianceName(leader)} alliance grows too strong. Join us against them for two turns?`,
-      `Let us settle our quarrel later. For two turns, we both march on the ${allianceName(leader)}.`,
-      `The ${allianceName(leader)} will swallow us one at a time. Strike them with us?`,
+      `The ${L} alliance grows too strong. Join us against the ${L} for two turns?`,
+      `Let us settle our quarrel later. For two turns, we both march on the ${L}.`,
+      `The ${L} will swallow us one at a time. Strike them with us?`,
     ]);
     return { kind: 'say', playerId: pid, to: { kind: 'diplomacy', allianceIds: [a, partner] }, text, intent: { kind: 'propose', proposalId: id, pact: 'joint', targetAllianceId: leader, turns: 2 } };
   }
-  // the leader (or an alliance level with it) seeks a truce with its most dangerous neighbour
+  // the leader (or an alliance level with it) seeks peace with its most dangerous neighbour
   const threat = (x: AllianceId) => {
     let n = 0;
     for (const u of Object.values(state.units)) {
@@ -86,40 +224,35 @@ function proposalFor(state: GameState, a: AllianceId, rng: RngState, pid: Player
     }
     return n;
   };
-  const rival = others.filter((x) => !pacted.has(x)).sort((x, y) => threat(y) - threat(x))[0];
+  const rival = others.filter((x) => !truce.includes(x)).sort((x, y) => threat(y) - threat(x))[0];
   if (!rival || nextFloat(rng) < 0.5) return null;
-  const text = pick(rng, [
-    `Our quarrel profits no one. A truce for two turns?`,
-    `Peace between us for two turns, and let the others bleed.`,
-    `Hold your soldiers back from our cities and we will hold ours from yours. Two turns?`,
-  ]);
+  const text = pick(rng, ['Our quarrel profits no one. A truce for two turns?', 'Peace between us for two turns, and let the others bleed.', 'Hold your soldiers back from our cities and we will hold ours from yours. Two turns?']);
   return { kind: 'say', playerId: pid, to: { kind: 'diplomacy', allianceIds: [a, rival] }, text, intent: { kind: 'propose', proposalId: id, pact: 'truce', turns: 2 } };
 }
 
-function answer(state: GameState, a: AllianceId, prop: Proposal, rng: RngState, pid: PlayerId): Action {
+function answerOffer(state: GameState, a: AllianceId, offer: Offer, rng: RngState, pid: PlayerId): Action {
   const mine = strength(state, a);
   let accept: boolean;
-  if (prop.pact === 'joint') {
-    const target = prop.targetAllianceId!;
-    accept = !trucePartners(state, a).includes(target) && strength(state, target) >= mine;
+  if (offer.pact === 'joint') {
+    const target = offer.targetAllianceId!;
+    accept = target !== a && !understandings(state, a).truce.includes(target) && strength(state, target) >= mine;
   } else {
-    // a truce is worth having with someone at least as strong; with the weak, only sometimes
-    const theirs = strength(state, prop.from);
-    accept = theirs >= mine * 1.1 || nextFloat(rng) < 0.3;
+    // peace is worth having with someone at least as strong; with the weak, only sometimes
+    accept = strength(state, offer.from) >= mine * 1.1 || nextFloat(rng) < 0.3;
   }
   const text = accept
-    ? pick(rng, prop.pact === 'joint' ? ['Agreed. Together, then.', 'We march with you.', 'Done. May the Fates favour us both.'] : ['Agreed. Keep your word and we will keep ours.', 'A truce, then.', 'Peace, for now.'])
-    : pick(rng, ['We decline.', 'Not this time.', 'You mistake us for fools.', 'Our answer is no.']);
-  return { kind: 'say', playerId: pid, to: { kind: 'diplomacy', allianceIds: [prop.from, a] }, text, intent: { kind: 'reply', proposalId: prop.id, accept } };
+    ? pick(rng, offer.pact === 'joint' ? ['Agreed. Together, then.', 'Yes. We march with you.', 'Done. May the Fates favour us both.'] : ['Agreed. Keep your word and we will keep ours.', 'Yes, a truce, then.', 'Agreed. Peace, for now.'])
+    : pick(rng, ['No. We decline.', 'Not a chance.', 'No. You mistake us for fools.', 'Our answer is no.']);
+  return { kind: 'say', playerId: pid, to: { kind: 'diplomacy', allianceIds: [offer.from, a] }, text, intent: { kind: 'reply', proposalId: offer.id, accept } };
 }
 
 /** A line of public table talk about what happened to this leader lately, or a little banter. */
 function tableTalk(state: GameState, pid: PlayerId, rng: RngState): string | null {
   const me = state.players[pid];
-  const recent = state.log.filter((e) => e.turn >= state.turn - 1);
   const a = me.allianceId!;
-  const betrayed = (state.pacts ?? []).find((p) => p.broken && p.broken.turn >= state.turn - 1 && p.broken.byAllianceId && p.broken.byAllianceId !== a && p.allianceIds.includes(a));
-  if (betrayed) return pick(rng, [`So much for the word of the ${allianceName(betrayed.broken!.byAllianceId!)} alliance.`, `Remember this betrayal, all of you.`, `A truce is only as good as the ${allianceName(betrayed.broken!.byAllianceId!)} General's memory.`]);
+  const traitor = betrayers(state, a)[0];
+  if (traitor) return pick(rng, [`So much for the word of the ${allianceName(traitor)} alliance.`, 'Remember this betrayal, all of you.', `A promise is only as good as the ${allianceName(traitor)} General's memory.`]);
+  const recent = state.log.filter((e) => e.turn >= state.turn - 1);
   for (let i = recent.length - 1; i >= 0; i--) {
     const t = recent[i].text;
     const lost = t.match(/^(.*) is conquered from (.*) and assigned to (.*)\.$/);
@@ -127,7 +260,7 @@ function tableTalk(state: GameState, pid: PlayerId, rng: RngState): string | nul
     if (lost && lost[3].startsWith(me.leaderName)) return pick(rng, [`${lost[1]} flies our colours now.`, `Who is next after ${lost[1]}?`, `${lost[1]} welcomed us with open gates. Mostly.`]);
     const taken = t.match(/^(.*) is taken and assigned to (.*)\.$/);
     if (taken && taken[2].startsWith(me.leaderName)) return pick(rng, [`${taken[1]} is ours. It was only a matter of time.`, `A fine morning in ${taken[1]}.`]);
-    if (t.includes(`${me.leaderName}`) && t.includes('is elected General')) return pick(rng, ['The alliance has chosen wisely.', 'I will not waste this mandate.']);
+    if (t.includes(me.leaderName) && t.includes('is elected General')) return pick(rng, ['The alliance has chosen wisely.', 'I will not waste this mandate.']);
   }
   if (nextFloat(rng) < 0.5) return null;
   return pick(rng, [
@@ -142,9 +275,9 @@ function tableTalk(state: GameState, pid: PlayerId, rng: RngState): string | nul
 
 /**
  * The next thing a bot says before answering its pending decision, or null.
- * The runner asks again after each message, so a bot answers proposals first,
- * then (as General, during allocation) names the turn's target and sometimes
- * proposes a pact, then may add one public line per turn.
+ * The runner asks again after each message, so a General first answers any
+ * offer made to its alliance, then (during allocation) names the turn's target
+ * and sometimes makes an offer, and any bot may add one public line per turn.
  */
 export function botSays(state: GameState, pid: PlayerId): Action | null {
   const me = state.players[pid];
@@ -154,8 +287,8 @@ export function botSays(state: GameState, pid: PlayerId): Action | null {
   const mineThisTurn = (pred: (m: Message) => boolean) => (state.messages ?? []).some((m) => m.turn === state.turn && m.fromId === pid && pred(m));
   const general = isGeneralOf(state, pid);
   if (general) {
-    const prop = openProposals(state, general)[0];
-    if (prop) return answer(state, general, prop, rng, pid);
+    const open = readDiplomacy(state, general).find((u) => u.accepted === null && u.offer.to === general && u.offer.turn >= state.turn - 1);
+    if (open) return answerOffer(state, general, open.offer, rng, pid);
   }
   if (general && state.phase === 'allocation') {
     if (!mineThisTurn((m) => m.intent?.kind === 'target')) {
@@ -167,15 +300,13 @@ export function botSays(state: GameState, pid: PlayerId): Action | null {
       }
     }
     if (!mineThisTurn((m) => m.intent?.kind === 'propose') && nextFloat(rng) < 0.35) {
-      const prop = proposalFor(state, general, rng, pid);
-      if (prop) return prop;
+      const offer = makeOffer(state, general, rng, pid);
+      if (offer) return offer;
     }
   }
-  if ((state.phase === 'allocation' || state.phase === 'politics') && !mineThisTurn((m) => m.to.kind === 'all') && nextFloat(rng) < 0.3) {
+  if ((state.phase === 'allocation' || state.phase === 'politics' || state.phase === 'reconciliation') && !mineThisTurn((m) => m.to.kind === 'all') && (betrayers(state, a).length > 0 || nextFloat(rng) < 0.3)) {
     const text = tableTalk(state, pid, rng);
     if (text) return { kind: 'say', playerId: pid, to: { kind: 'all' }, text };
   }
   return null;
 }
-
-export { speaker };

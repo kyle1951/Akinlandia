@@ -47,10 +47,10 @@ failing seed and prints the state around the failing action.
    replays the engine's result, can be skipped, can be switched off with "battle scenes" in the top bar, and
    any battle on the resolution map can be watched again.
 4. **Messages and diplomacy.** The Messages panel carries public table talk, private alliance chat and
-   diplomacy between alliances. Generals can name the alliance's target (⚑ on the board) and propose truces
-   or joint attacks, which the other General accepts or declines. Bots take part: they name targets, keep
-   their pacts, answer and make proposals, and banter. Pacts are not enforced by the rules, but breaking a
-   truce is announced to everyone.
+   diplomacy with another alliance. Diplomacy is by word only: offer a truce or a joint attack, answer yes or
+   no, and keep or break your word; nothing is recorded or enforced. Bots take part: they understand plain
+   offers and answers, keep their word until an undefended city tempts them, complain when betrayed, and
+   banter. A General can also name the alliance's target (⚑ on the board), which bot allies follow.
 5. **Saving.** The game autosaves to the browser after every action and offers to resume on reload. "Export
    save" downloads the state as JSON and "Import save" loads one.
 
