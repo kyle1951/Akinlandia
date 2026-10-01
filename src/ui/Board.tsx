@@ -157,6 +157,17 @@ export function Board({ game, highlights, onTileClick, showCoords, arrows = [], 
         {tiles.map((t) => (
           <TileView key={t.id} tile={t} game={game} units={unitsByTile.get(t.id) ?? []} highlight={hl.get(t.id)} onClick={() => clickTile(t.id)} showCoords={!!showCoords} riverDirs={riverLinks.get(t.id)} />
         ))}
+        {/* city names on top of every hex, so a neighbouring tile never covers the end of one */}
+        {tiles
+          .filter((t) => t.city)
+          .map((t) => {
+            const c = hexToPixel(t, SIZE);
+            return (
+              <text key={`name-${t.id}`} className="city-label" x={c.x} y={c.y + SIZE - 8}>
+                {t.city!.name}
+              </text>
+            );
+          })}
         {riverLabels.map((l) => (
           <text key={`river-${l.name}`} className="river-label" x={l.x} y={l.y - SIZE * 0.55}>
             {l.name}
@@ -350,9 +361,6 @@ function CityView({ tile, game, cx, cy }: { tile: Tile; game: GameState; cx: num
           {badges.join('')}
         </text>
       )}
-      <text className="city-label" x={cx} y={cy + SIZE - 8}>
-        {city.name}
-      </text>
     </g>
   );
 }

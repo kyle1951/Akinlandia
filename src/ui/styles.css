@@ -193,6 +193,9 @@ select {
 .city-label {
   font-size: 9px;
   fill: #1b1b1b;
+  stroke: rgba(255, 255, 255, 0.85);
+  stroke-width: 2.5;
+  paint-order: stroke;
   text-anchor: middle;
   pointer-events: none;
   font-family: Georgia, serif;
