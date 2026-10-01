@@ -48,7 +48,9 @@ describe('starting slots are equitable', () => {
       for (const s of slots) {
         const cs = bySlot[s];
         if (cs.length !== 2) problems.push(`${s} has ${cs.length} cities`);
-        if (hexDistance(cs[0], cs[1]) > 4) problems.push(`${s} cities are ${hexDistance(cs[0], cs[1])} apart`);
+        // KGI and the School of Theology sit at opposite ends of Claremont's west side, as they really do (decision 118)
+        const split = mapId === 'claremont' && s === 'green-rose';
+        if (hexDistance(cs[0], cs[1]) > 4 && !split) problems.push(`${s} cities are ${hexDistance(cs[0], cs[1])} apart`);
         if (!landlocked && !cs.some((c) => c.edges.some((e) => e.type === 'sea'))) problems.push(`${s} has no coastal city`);
         for (const o of slots) if (o !== s) for (const a of cs) for (const b of bySlot[o]) if (hexDistance(a, b) < 2) problems.push(`${a.city!.name} (${s}) is adjacent to ${b.city!.name} (${o})`);
         let wheat = 0, raw = 0;

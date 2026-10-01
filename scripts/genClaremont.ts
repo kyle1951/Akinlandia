@@ -3,20 +3,25 @@
  *
  * usage: npx vite-node scripts/genClaremont.ts [--write]
  *
- * Nine nations in three teams of three, traced from the campus map and its
- * neighbourhood (the Villages to the west, the Botanic Garden to the north):
+ * Nine nations in three teams of three, laid out as on Google Maps (decision 118):
  *   Black = CMS: CMC (royal), Harvey Mudd, Scripps
- *
- * As on campus: Mudd across the north; Scripps (west) and Pitzer (east) below it,
- * north of 9th Street; CMC in the band south of both, the eastern-most nation;
- * the Consortium and Pomona North to CMC's west; Pomona South along the south;
- * KGI and the School of Theology south-east, below CMC's fields.
  *   White = the Sagehens: Pomona North Campus (royal), Pomona South Campus, Pitzer
  *   Green = the Grad Schools: CGU (royal), KGI with the School of Theology, the Consortium
  *
+ * North of Foothill: the School of Theology (Kresge Chapel) in the west, the Botanic
+ * Garden beside it, and the Tropical Lei on the street itself far out east. Between
+ * Foothill and 9th St: CGU west of Dartmouth; Mudd along Foothill and Scripps below
+ * it between Dartmouth and Mills; Pitzer from Mills to Claremont Blvd. Between 9th
+ * and 6th: the Consortium (Honnold, Huntley) in the west, Pomona North in the middle
+ * and CMC east to Claremont Blvd. South of 6th: the Villages in the west, Pomona South
+ * in the middle, playing fields in the east, and KGI in the far south-west past the
+ * Packing House. The School of Theology and KGI are one nation with a city at each end
+ * of the west side. Distances are squeezed so every nation has room to farm; the order
+ * of things, and which side of each street they are on, follows the real map.
+ *
  * Every nation starts with two cities. Of the eighteen open cities, nine are
- * first-turn grabs (next to one nation's starting city, at least three hexes
- * from every other nation's) and nine are contested (equally far from two
+ * first-turn grabs (within a turn's march of one nation's starting city, next door
+ * where the real place allows, at least three hexes from every other nation's) and nine are contested (equally far from two
  * nations of different teams, farther from everyone else: three for each pair
  * of teams, two for each nation). The generator places the open cities by
  * those rules and fails loudly when it cannot. Every nation has three wheat and
@@ -38,24 +43,27 @@ import { writeFileSync } from 'fs';
 import { hexDistance, tileId } from '../src/engine/hex';
 
 const TERRAIN = [
-  '......nnnnnn.......',
-  '....111111111111111',
-  '....GGGG3MMMMMMMZZ2',
-  '....GGGG3MMMMMMMZZ2',
-  '....GGGG3SSSSZZZZZ2',
-  '....GGGG3SSSSZZZZZ2',
-  '....GGGG3SSSSZZZZZ2',
-  '..vv..GG3SSSSZZZZZ2',
-  '.vvv..UU3UCCCCCCCC2',
-  'vvvvNNUU3NCCCCCCCC2',
-  'vvvvNNNN3NnCCCCCCC2',
-  'vvvv666666666666666',
-  'vvvvNNNNNNnnnCCCCC.',
-  'vvvvPPPPPPnnKKKKC..',
-  'vvvvPPPPPPPPKKKK...',
-  '.vvvPPPPPPPPKKKK...',
-  '..vvPPPPPPPPPP.....',
-  '....P.P.P.P.P.P....',
+  '.KKKnnnnnn.........',
+  'KKKKnnnnnnnn.......',
+  'KKKKnnnnnnnnnnnnnn.',
+  '1111111111111111111',
+  'GGGGGG3MMMMMMZZZZZ2',
+  'GGGGGG3MMMMMMZZZZZ2',
+  'GGGGGG3SSSSSSZZZZZ2',
+  'GGGGGG3SSSSSSZZZZZ2',
+  'GGGGGG3SSSSSSZZZZZ2',
+  'GGGGGG3SSSSSSZZZZZ2',
+  'UUUUUU3UUCCCCCCCCC2',
+  'UUUUNNNNNNCCCCCCCC2',
+  'UUUUNNNNNNNCCCCCCC2',
+  'UUUUNNNNNNNCCCCCCC2',
+  'UUUUNNNNNNNCCCCCCC2',
+  '6666666666666666666',
+  'vvvvvPPPPPPPPPnnnn.',
+  'vvvvvPPPPPPPPPnnnn.',
+  'vvvvvPPPPPPPPP.....',
+  'KKKvvPPPPPPPPP.....',
+  'KKKvv.P.P.P.P......',
 ];
 
 /** the streets, as navigable rivers one hex wide (decision 117): digit in TERRAIN -> name */
@@ -77,33 +85,61 @@ interface NationDef {
   starts: [number, number, string][];
   /** the open city next door it can take on the first turn */
   grab: string;
+  /** starting cities far apart, as the real campuses are (KGI and the School of Theology) */
+  split?: boolean;
 }
 
 // names from the table (2026-09-30); the Grad Schools' in the same spirit
 const NATIONS: Record<Nation, NationDef> = {
-  C: { slot: 'black-purple', team: 'black', college: 'CMC', name: 'North Quad Networkers', color: '#8a1538', tint: '#cfa3a8', royal: true, starts: [[15, 8, 'North Quad'], [12, 9, 'Collins']], grab: 'The Athenaeum' },
-  M: { slot: 'black-orange', team: 'black', college: 'Harvey Mudd', name: 'Grinders of Galileo', color: '#e0a100', tint: '#e9d596', royal: false, starts: [[9, 2, 'Galileo Hall'], [13, 2, 'Hixon Court']], grab: 'The Mall' },
-  S: { slot: 'black-gold', team: 'black', college: 'Scripps', name: 'Feelers of Fowler', color: '#3f7f5f', tint: '#a9ccb4', royal: false, starts: [[11, 6, 'Seal Court'], [9, 5, 'Denison Library']], grab: 'Fowler Garden' },
-  N: { slot: 'white-purple', team: 'white', college: 'Pomona North Campus', name: 'The Frary Feast', color: '#1f4e9c', tint: '#a8bfdf', royal: true, starts: [[7, 12, 'Frary'], [10, 12, 'Walker Beach']], grab: 'Smith Campus Center' },
-  P: { slot: 'white-crimson', team: 'white', college: 'Pomona South Campus', name: 'Monologuers of Marston', color: '#4aa3df', tint: '#c9dbf0', royal: false, starts: [[6, 15, 'Frank'], [10, 15, 'Oldenborg']], grab: 'Marston Quad' },
-  Z: { slot: 'white-azure', team: 'white', college: 'Pitzer', name: 'Munchers of Mound', color: '#f47b20', tint: '#f3c49a', royal: false, starts: [[16, 4, 'Grove House'], [14, 6, 'Mead Hall']], grab: 'The Mounds' },
-  G: { slot: 'green-purple', team: 'green', college: 'CGU', name: 'Dissertators of Drucker', color: '#c8102e', tint: '#e8aaa8', royal: true, starts: [[6, 3, 'Harper Hall'], [6, 6, 'Stauffer Hall']], grab: 'Drucker School' },
-  K: { slot: 'green-rose', team: 'green', college: 'KGI and Claremont School of Theology', name: 'Pipette Priests of Kresge', color: '#1b8a84', tint: '#a9d6d3', royal: false, starts: [[14, 14, 'Riggs School'], [12, 14, 'Kresge Chapel']], grab: 'Theology Library' },
-  U: { slot: 'green-teal', team: 'green', college: 'the Claremont University Consortium', name: 'Hushers of Honnold', color: '#6a3d9a', tint: '#cdb9e2', royal: false, starts: [[8, 8, 'Honnold Library'], [5, 10, 'Huntley Bookstore']], grab: 'The Old Village' },
+  C: { slot: 'black-purple', team: 'black', college: 'CMC', name: 'North Quad Networkers', color: '#8a1538', tint: '#cfa3a8', royal: true, starts: [[15, 11, 'North Quad'], [12, 13, 'Collins']], grab: 'Roberts Pavilion' },
+  M: { slot: 'black-orange', team: 'black', college: 'Harvey Mudd', name: 'Grinders of Galileo', color: '#e0a100', tint: '#e9d596', royal: false, starts: [[12, 4, 'Galileo Hall'], [8, 4, 'Hixon Court']], grab: 'The Mall' },
+  S: { slot: 'black-gold', team: 'black', college: 'Scripps', name: 'Feelers of Fowler', color: '#3f7f5f', tint: '#a9ccb4', royal: false, starts: [[11, 8, 'Seal Court'], [8, 7, 'Denison Library']], grab: 'Fowler Garden' },
+  N: { slot: 'white-purple', team: 'white', college: 'Pomona North Campus', name: 'The Frary Feast', color: '#1f4e9c', tint: '#a8bfdf', royal: true, starts: [[9, 13, 'Frary'], [6, 12, 'Walker Beach']], grab: 'Smith Tower' },
+  P: { slot: 'white-crimson', team: 'white', college: 'Pomona South Campus', name: 'Monologuers of Marston', color: '#4aa3df', tint: '#c9dbf0', royal: false, starts: [[7, 18, 'Frank'], [11, 17, 'Oldenborg']], grab: 'Marston Quad' },
+  Z: { slot: 'white-azure', team: 'white', college: 'Pitzer', name: 'Munchers of Mound', color: '#f47b20', tint: '#f3c49a', royal: false, starts: [[16, 4, 'Grove House'], [15, 7, 'Mead Hall']], grab: 'The Tropical Lei' },
+  G: { slot: 'green-purple', team: 'green', college: 'CGU', name: 'Dissertators of Drucker', color: '#c8102e', tint: '#e8aaa8', royal: true, starts: [[3, 5, 'Harper Hall'], [2, 8, 'Stauffer Hall']], grab: 'Theology Library' },
+  K: { slot: 'green-rose', team: 'green', college: 'KGI and Claremont School of Theology', name: 'Pipette Priests of Kresge', color: '#1b8a84', tint: '#a9d6d3', royal: false, starts: [[1, 20, 'Riggs School'], [2, 1, 'Kresge Chapel']], grab: '21 Choices', split: true },
+  U: { slot: 'green-teal', team: 'green', college: 'the Claremont University Consortium', name: 'Hushers of Honnold', color: '#6a3d9a', tint: '#cdb9e2', royal: false, starts: [[7, 10, 'Honnold Library'], [3, 12, 'Huntley Bookstore']], grab: 'McAlister Center' },
 };
 
-/** contested open cities: [nation, nation, name]; two nations of different teams each */
+/**
+ * contested open cities: [nation, nation, name]; two nations of different teams each. With the
+ * real neighbours (Pitzer touches only CMS colleges; CGU only Mudd and Scripps among other teams)
+ * this is the only pairing that gives every nation two and every pair of teams three.
+ */
 const CONTESTED: [Nation, Nation, string][] = [
+  ['C', 'N', 'The Athenaeum'],
+  ['C', 'Z', 'The Mounds'],
   ['S', 'Z', 'Keck Science'],
-  ['M', 'Z', 'The Tropical Lei'],
-  ['C', 'N', 'Big Bridges'],
-  ['M', 'G', 'Botanic Garden'],
+  ['M', 'G', 'Drucker School'],
   ['S', 'G', 'The Motley'],
-  ['C', 'K', 'Roberts Pavilion'],
-  ['N', 'U', '21 Choices'],
-  ['P', 'U', 'The New Village'],
-  ['P', 'K', 'Strehle Track'],
+  ['M', 'K', 'Botanic Garden'],
+  ['N', 'U', 'The Skyspace'],
+  ['P', 'U', 'The Old Village'],
+  ['P', 'K', 'The New Village'],
 ];
+
+/** where each open city really is, on this grid: placement prefers the cell nearest it among those the rules allow */
+const NEAR: Record<string, [number, number]> = {
+  'Roberts Pavilion': [16, 14],
+  'The Mall': [10, 5],
+  'Fowler Garden': [9, 8],
+  'Smith Tower': [7, 13],
+  'Marston Quad': [6, 17],
+  'The Tropical Lei': [17, 2],
+  'Drucker School': [5, 4],
+  '21 Choices': [1, 19],
+  'McAlister Center': [5, 10],
+  'The Athenaeum': [10, 12],
+  'The Mounds': [15, 10],
+  'Keck Science': [13, 9],
+  'Botanic Garden': [6, 1],
+  'The Motley': [7, 8],
+  'Theology Library': [3, 3],
+  'The Skyspace': [4, 12],
+  'The Old Village': [3, 16],
+  'The New Village': [2, 18],
+};
 
 const VILLAGE_TINT = '#d9d0bf';
 
@@ -122,6 +158,10 @@ const qr = (id: string) => ({ q: Number(id.split(',')[0]), r: Number(id.split(',
 const clsOf = (id: string) => cellAt.get(id)!.cls;
 const onStreet = (id: string) => clsOf(id) in STREETS;
 const dist = (a: string, b: string) => hexDistance(qr(a), qr(b));
+const nearReal = (name: string, t: string) => {
+  const [x, y] = NEAR[name];
+  return hexDistance(qr(t), axial(x, y));
+};
 const problems: string[] = [];
 
 // ---- starting cities
@@ -141,7 +181,7 @@ const startsOf = (n: Nation) => [...startOf].filter(([, m]) => m === n).map(([id
 const dNation = (n: Nation, t: string) => Math.min(...startsOf(n).map((s) => dist(s, t)));
 for (const n of nations) {
   const [a, b] = startsOf(n);
-  if (dist(a, b) > 4) problems.push(`${NATIONS[n].college}: starting cities ${dist(a, b)} apart`);
+  if (dist(a, b) > 4 && !NATIONS[n].split) problems.push(`${NATIONS[n].college}: starting cities ${dist(a, b)} apart`);
   for (const m of nations) if (m !== n) for (const s of startsOf(m)) if (dNation(n, s) < 2) problems.push(`${NATIONS[n].college} is adjacent to ${NATIONS[m].college}`);
 }
 
@@ -157,7 +197,7 @@ for (const [x, y, name] of CONTESTED) {
     const others = Math.min(...nations.filter((m) => m !== x && m !== y).map((m) => dNation(m, t)));
     if (others <= dx || !farFromCities(t)) continue;
     // a contested city may stand on a street where two nations meet across it, but would rather not
-    const score = -dx * 10 + Math.min(others - dx, 3) * 3 + (clsOf(t) === 'n' || clsOf(t) === 'v' ? 1 : 0) - (onStreet(t) ? 2 : 0);
+    const score = -dx * 10 + Math.min(others - dx, 3) * 3 + (clsOf(t) === 'n' || clsOf(t) === 'v' ? 1 : 0) - (onStreet(t) ? 2 : 0) - nearReal(name, t) * 2;
     if (!best || score > best.score || (score === best.score && t < best.id)) best = { id: t, score };
   }
   if (!best) {
@@ -179,12 +219,15 @@ for (const [x, y, name] of CONTESTED) {
 for (const n of nations) {
   let best: { id: string; score: number } | null = null;
   for (const t of ids) {
-    if (cityAt.has(t) || onStreet(t) || dNation(n, t) !== 1) continue;
+    const dn = dNation(n, t);
+    if (cityAt.has(t) || dn < 1 || dn > 2) continue;
     const others = Math.min(...nations.filter((m) => m !== n).map((m) => dNation(m, t)));
     if (others < 3) continue;
     const near = startsOf(n).filter((s) => dist(s, t) === 1);
     if (!farFromCities(t, near)) continue;
-    const score = others * 10 + (clsOf(t) === n ? 2 : 0);
+    // as near the real place as the rules allow, and next door unless the real place is farther
+    // (the Tropical Lei: across Foothill from Pitzer, two hexes out)
+    const score = Math.min(others, 5) * 3 + (clsOf(t) === n ? 2 : 0) - nearReal(NATIONS[n].grab, t) * 4 - (dn === 2 ? 3 : 0);
     if (!best || score > best.score || (score === best.score && t < best.id)) best = { id: t, score };
   }
   if (!best) problems.push(`no first-turn city fits next to ${NATIONS[n].college}`);

@@ -22,7 +22,7 @@ describe('the Claremont Colleges map (decision 113)', () => {
     expect(open).toHaveLength(18);
   });
 
-  it('gives every nation one open city to take on the first turn and two contested ones, three per pair of teams', () => {
+  it('gives every nation one open city to take within a turn and two contested ones, three per pair of teams', () => {
     const grabs: Record<string, string[]> = {};
     const contested: Record<string, string[]> = {};
     const pairs: Record<string, number> = {};
@@ -31,8 +31,8 @@ describe('the Claremont Colleges map (decision 113)', () => {
       const best = Math.min(...Object.values(d));
       const nearest = nations.filter((n) => d[n] === best);
       const rest = Math.min(...nations.filter((n) => !nearest.includes(n)).map((n) => d[n]));
-      if (best === 1) {
-        expect(nearest, t.city!.name).toHaveLength(1);
+      if (nearest.length === 1) {
+        expect(best, `${t.city!.name}: more than a turn's march away`).toBeLessThanOrEqual(2);
         expect(rest, `${t.city!.name}: another nation within reach on the first turn`).toBeGreaterThanOrEqual(3);
         (grabs[nearest[0]] ??= []).push(t.city!.name);
       } else {
@@ -57,6 +57,20 @@ describe('the Claremont Colleges map (decision 113)', () => {
     expect(names('black')).toEqual(['North Quad Networkers*', 'Grinders of Galileo', 'Feelers of Fowler']);
     expect(names('white')).toEqual(['The Frary Feast*', 'Monologuers of Marston', 'Munchers of Mound']);
     expect(names('green')).toEqual(['Dissertators of Drucker*', 'Pipette Priests of Kresge', 'Hushers of Honnold']);
+  });
+
+  it('follows the real map: who is north of Foothill and which side of 6th St each campus lies on (decision 118)', () => {
+    const row = (name: string) => {
+      const t = cities.find((c) => c.city!.name === name)!;
+      return t.r + (t.q - (t.q & 1)) / 2;
+    };
+    const street = (name: string) => Object.values(tiles).filter((t) => t.river === name).map((t) => t.r + (t.q - (t.q & 1)) / 2);
+    const foothill = Math.max(...street('Foothill Blvd'));
+    const sixth = Math.min(...street('6th St'));
+    for (const n of ['Kresge Chapel', 'Botanic Garden', 'The Tropical Lei']) expect(row(n), n).toBeLessThan(foothill);
+    for (const n of ['Frary', 'Walker Beach', 'Collins', 'North Quad', 'Honnold Library', 'Galileo Hall', 'Grove House']) expect(row(n), n).toBeGreaterThan(foothill);
+    for (const n of ['Frary', 'Walker Beach', 'Collins', 'Honnold Library']) expect(row(n), n).toBeLessThan(sixth);
+    for (const n of ['Frank', 'Oldenborg', 'Marston Quad', 'The Old Village', 'The New Village', 'Riggs School']) expect(row(n), n).toBeGreaterThan(sixth);
   });
 
   it('plays complete bot games with three to nine leaders in both military modes', () => {

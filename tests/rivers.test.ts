@@ -38,7 +38,9 @@ describe('navigable rivers (decision 117)', () => {
         if (riverEdge) expect(t.edges[d].type).toBe('land');
       }
     }
-    expect(s.tiles[Object.values(s.tiles).find((t) => t.city?.name === 'Honnold Library')!.id].river).toBe('Dartmouth Ave');
+    // Dartmouth ends at 8th St, by Honnold Library
+    const honnold = Object.values(s.tiles).find((t) => t.city?.name === 'Honnold Library')!;
+    expect(honnold.edges.some((e) => e.river)).toBe(true);
   });
 
   it('soldiers cross a river on foot; in the ship rounds only manned ships sail along it', () => {
@@ -81,7 +83,7 @@ describe('navigable rivers (decision 117)', () => {
     const s = newGame(9, 1, { mapId: 'claremont' });
     const holder = (name: string) => Object.values(s.tiles).find((t) => t.city?.name === name)!;
     const galileo = holder('Galileo Hall');
-    const grove = holder('Grove House');
+    const grove = holder('Mead Hall');
     expect(galileo.edges.some((e) => e.river)).toBe(true);
     expect(grove.edges.some((e) => e.river)).toBe(false);
     expect(legalShipTiles(s, galileo.city!.ownerId!)).toContain(galileo.id);
