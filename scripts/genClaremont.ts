@@ -26,32 +26,44 @@
  * TERRAIN is an offset grid (x = column west->east, y = row north->south;
  * flat-top hexes, odd columns sit half a hex lower). Letters mark each nation's
  * ground (for its tint); n is neutral ground, v the Villages, . off the board.
- * Claremont is landlocked and flat: no water, no mountains.
+ * Claremont is landlocked and flat: no sea, no mountains. Four streets run as
+ * navigable rivers one hex wide (decision 117): Foothill Blvd along the north
+ * (the Botanic Garden beyond it), Claremont Blvd down the east side, Dartmouth
+ * Ave from Foothill past Honnold Library to 6th St, and 6th St between Pomona
+ * and the colleges to its north (digits in TERRAIN, named in STREETS). No open
+ * field lies on a street; Honnold Library stands on Dartmouth, and a contested city
+ * may stand on one where two nations meet across it.
  */
 import { writeFileSync } from 'fs';
 import { hexDistance, tileId } from '../src/engine/hex';
 
 const TERRAIN = [
-  '......nnnnnn......',
-  '....GGGGMMMMMMMMZZ',
-  '....GGGGMMMMMMMMZZ',
-  '....GGGGSSSSSZZZZZ',
-  '....GGGGSSSSSZZZZZ',
-  '....GGGGSSSSSZZZZZ',
-  '..vv..GGUSSSSZZZZZ',
-  '.vvv..UUUUCCCCCCCC',
-  'vvvvNNUUUNCCCCCCCC',
-  'vvvvNNNNNNnCCCCCCC',
-  'vvvvNNNNNNnnnCCCCC',
-  'vvvvPPPPPPnnKKKKC.',
-  'vvvvPPPPPPPPKKKK..',
-  '.vvvPPPPPPPPKKKK..',
-  '..vvPPPPPPPPPP....',
-  '....P.P.P.P.P.P...',
+  '......nnnnnn.......',
+  '....111111111111111',
+  '....GGGG3MMMMMMMZZ2',
+  '....GGGG3MMMMMMMZZ2',
+  '....GGGG3SSSSZZZZZ2',
+  '....GGGG3SSSSZZZZZ2',
+  '....GGGG3SSSSZZZZZ2',
+  '..vv..GG3SSSSZZZZZ2',
+  '.vvv..UU3UCCCCCCCC2',
+  'vvvvNNUU3NCCCCCCCC2',
+  'vvvvNNNN3NnCCCCCCC2',
+  'vvvv666666666666666',
+  'vvvvNNNNNNnnnCCCCC.',
+  'vvvvPPPPPPnnKKKKC..',
+  'vvvvPPPPPPPPKKKK...',
+  '.vvvPPPPPPPPKKKK...',
+  '..vvPPPPPPPPPP.....',
+  '....P.P.P.P.P.P....',
 ];
 
+/** the streets, as navigable rivers one hex wide (decision 117): digit in TERRAIN -> name */
+const STREETS: Record<string, string> = { '1': 'Foothill Blvd', '2': 'Claremont Blvd', '3': 'Dartmouth Ave', '6': '6th St' };
+const STREET_TINT = '#c9cdd1';
+
 type Nation = 'C' | 'M' | 'S' | 'N' | 'P' | 'Z' | 'G' | 'K' | 'U';
-type Cls = Nation | 'n' | 'v';
+type Cls = Nation | 'n' | 'v' | '1' | '2' | '3' | '6';
 
 interface NationDef {
   slot: string;
@@ -69,15 +81,15 @@ interface NationDef {
 
 // names from the table (2026-09-30); the Grad Schools' in the same spirit
 const NATIONS: Record<Nation, NationDef> = {
-  C: { slot: 'black-purple', team: 'black', college: 'CMC', name: 'North Quad Networkers', color: '#8a1538', tint: '#cfa3a8', royal: true, starts: [[15, 7, 'North Quad'], [12, 8, 'Collins']], grab: 'The Athenaeum' },
-  M: { slot: 'black-orange', team: 'black', college: 'Harvey Mudd', name: 'Grinders of Galileo', color: '#e0a100', tint: '#e9d596', royal: false, starts: [[9, 1, 'Galileo Hall'], [13, 1, 'Hixon Court']], grab: 'The Mall' },
-  S: { slot: 'black-gold', team: 'black', college: 'Scripps', name: 'Feelers of Fowler', color: '#3f7f5f', tint: '#a9ccb4', royal: false, starts: [[11, 5, 'Seal Court'], [9, 4, 'Denison Library']], grab: 'Fowler Garden' },
-  N: { slot: 'white-purple', team: 'white', college: 'Pomona North Campus', name: 'The Frary Feast', color: '#1f4e9c', tint: '#a8bfdf', royal: true, starts: [[7, 10, 'Frary'], [9, 10, 'Walker Beach']], grab: 'Smith Campus Center' },
-  P: { slot: 'white-crimson', team: 'white', college: 'Pomona South Campus', name: 'Monologuers of Marston', color: '#4aa3df', tint: '#c9dbf0', royal: false, starts: [[6, 13, 'Frank'], [10, 13, 'Oldenborg']], grab: 'Marston Quad' },
-  Z: { slot: 'white-azure', team: 'white', college: 'Pitzer', name: 'Munchers of Mound', color: '#f47b20', tint: '#f3c49a', royal: false, starts: [[16, 3, 'Grove House'], [14, 5, 'Mead Hall']], grab: 'The Mounds' },
-  G: { slot: 'green-purple', team: 'green', college: 'CGU', name: 'Dissertators of Drucker', color: '#c8102e', tint: '#e8aaa8', royal: true, starts: [[6, 2, 'Harper Hall'], [6, 5, 'Stauffer Hall']], grab: 'Drucker School' },
-  K: { slot: 'green-rose', team: 'green', college: 'KGI and Claremont School of Theology', name: 'Pipette Priests of Kresge', color: '#1b8a84', tint: '#a9d6d3', royal: false, starts: [[14, 12, 'Riggs School'], [12, 12, 'Kresge Chapel']], grab: 'Theology Library' },
-  U: { slot: 'green-teal', team: 'green', college: 'the Claremont University Consortium', name: 'Hushers of Honnold', color: '#6a3d9a', tint: '#cdb9e2', royal: false, starts: [[8, 7, 'Honnold Library'], [5, 8, 'Huntley Bookstore']], grab: 'The Old Village' },
+  C: { slot: 'black-purple', team: 'black', college: 'CMC', name: 'North Quad Networkers', color: '#8a1538', tint: '#cfa3a8', royal: true, starts: [[15, 8, 'North Quad'], [12, 9, 'Collins']], grab: 'The Athenaeum' },
+  M: { slot: 'black-orange', team: 'black', college: 'Harvey Mudd', name: 'Grinders of Galileo', color: '#e0a100', tint: '#e9d596', royal: false, starts: [[9, 2, 'Galileo Hall'], [13, 2, 'Hixon Court']], grab: 'The Mall' },
+  S: { slot: 'black-gold', team: 'black', college: 'Scripps', name: 'Feelers of Fowler', color: '#3f7f5f', tint: '#a9ccb4', royal: false, starts: [[11, 6, 'Seal Court'], [9, 5, 'Denison Library']], grab: 'Fowler Garden' },
+  N: { slot: 'white-purple', team: 'white', college: 'Pomona North Campus', name: 'The Frary Feast', color: '#1f4e9c', tint: '#a8bfdf', royal: true, starts: [[7, 12, 'Frary'], [10, 12, 'Walker Beach']], grab: 'Smith Campus Center' },
+  P: { slot: 'white-crimson', team: 'white', college: 'Pomona South Campus', name: 'Monologuers of Marston', color: '#4aa3df', tint: '#c9dbf0', royal: false, starts: [[6, 15, 'Frank'], [10, 15, 'Oldenborg']], grab: 'Marston Quad' },
+  Z: { slot: 'white-azure', team: 'white', college: 'Pitzer', name: 'Munchers of Mound', color: '#f47b20', tint: '#f3c49a', royal: false, starts: [[16, 4, 'Grove House'], [14, 6, 'Mead Hall']], grab: 'The Mounds' },
+  G: { slot: 'green-purple', team: 'green', college: 'CGU', name: 'Dissertators of Drucker', color: '#c8102e', tint: '#e8aaa8', royal: true, starts: [[6, 3, 'Harper Hall'], [6, 6, 'Stauffer Hall']], grab: 'Drucker School' },
+  K: { slot: 'green-rose', team: 'green', college: 'KGI and Claremont School of Theology', name: 'Pipette Priests of Kresge', color: '#1b8a84', tint: '#a9d6d3', royal: false, starts: [[14, 14, 'Riggs School'], [12, 14, 'Kresge Chapel']], grab: 'Theology Library' },
+  U: { slot: 'green-teal', team: 'green', college: 'the Claremont University Consortium', name: 'Hushers of Honnold', color: '#6a3d9a', tint: '#cdb9e2', royal: false, starts: [[8, 8, 'Honnold Library'], [5, 10, 'Huntley Bookstore']], grab: 'The Old Village' },
 };
 
 /** contested open cities: [nation, nation, name]; two nations of different teams each */
@@ -108,6 +120,7 @@ TERRAIN.forEach((row, y) =>
 const ids = [...cellAt.keys()].sort();
 const qr = (id: string) => ({ q: Number(id.split(',')[0]), r: Number(id.split(',')[1]) });
 const clsOf = (id: string) => cellAt.get(id)!.cls;
+const onStreet = (id: string) => clsOf(id) in STREETS;
 const dist = (a: string, b: string) => hexDistance(qr(a), qr(b));
 const problems: string[] = [];
 
@@ -143,7 +156,8 @@ for (const [x, y, name] of CONTESTED) {
     if (dx !== dNation(y, t) || dx < 2 || dx > 4) continue;
     const others = Math.min(...nations.filter((m) => m !== x && m !== y).map((m) => dNation(m, t)));
     if (others <= dx || !farFromCities(t)) continue;
-    const score = -dx * 10 + Math.min(others - dx, 3) * 3 + (clsOf(t) === 'n' || clsOf(t) === 'v' ? 1 : 0);
+    // a contested city may stand on a street where two nations meet across it, but would rather not
+    const score = -dx * 10 + Math.min(others - dx, 3) * 3 + (clsOf(t) === 'n' || clsOf(t) === 'v' ? 1 : 0) - (onStreet(t) ? 2 : 0);
     if (!best || score > best.score || (score === best.score && t < best.id)) best = { id: t, score };
   }
   if (!best) {
@@ -165,7 +179,7 @@ for (const [x, y, name] of CONTESTED) {
 for (const n of nations) {
   let best: { id: string; score: number } | null = null;
   for (const t of ids) {
-    if (cityAt.has(t) || dNation(n, t) !== 1) continue;
+    if (cityAt.has(t) || onStreet(t) || dNation(n, t) !== 1) continue;
     const others = Math.min(...nations.filter((m) => m !== n).map((m) => dNation(m, t)));
     if (others < 3) continue;
     const near = startsOf(n).filter((s) => dist(s, t) === 1);
@@ -204,7 +218,7 @@ function spread(pool: string[], count: number, kind: 'wheat' | 'raw') {
     let best: string | null = null;
     let bestScore = -Infinity;
     for (const id of pool) {
-      if (has(id) || cityAt.has(id)) continue;
+      if (has(id) || cityAt.has(id) || onStreet(id)) continue;
       const dmin = chosen.length ? Math.min(...chosen.map((x) => dist(x, id))) : 9;
       const near = Math.min(...cityIds.map((c) => dist(c, id)));
       const score = dmin * 10 - near;
@@ -226,15 +240,15 @@ for (const city of cityIds.filter((id) => !startOf.has(id))) {
   const o = openOf.get(city)!;
   const own = new Set(o.kind === 'grab' ? privateOf(o.nation) : [...privateOf(o.pair[0]), ...privateOf(o.pair[1])]);
   const byDistance = (a: string, b: string) => dist(city, b) - dist(city, a) || (a < b ? -1 : 1);
-  const shared = [...reach(city)].filter((t) => t !== city && !cityAt.has(t) && !privateSet.has(t)).sort(byDistance);
-  const area = [...shared, ...[...reach(city)].filter((t) => !cityAt.has(t) && own.has(t)).sort(byDistance)];
+  const shared = [...reach(city)].filter((t) => t !== city && !cityAt.has(t) && !onStreet(t) && !privateSet.has(t)).sort(byDistance);
+  const area = [...shared, ...[...reach(city)].filter((t) => !cityAt.has(t) && !onStreet(t) && own.has(t)).sort(byDistance)];
   for (const t of area) if (area.filter(hasWheat).length < 2 && !hasWheat(t)) resources.get(t)!.add('wheat');
   for (const t of area) if (area.filter(hasRaw).length < 1 && !hasRaw(t)) addRaw(t);
   if (area.filter(hasWheat).length < 2 || area.filter(hasRaw).length < 1) problems.push(`${cityAt.get(city)} cannot be given fields outside private ground`);
 }
 // 2. each nation: two wheat and one raw by each starting city, then its private ground topped up
 for (const n of nations) {
-  const priv = privateOf(n).filter((t) => !cityAt.has(t));
+  const priv = privateOf(n).filter((t) => !cityAt.has(t) && !onStreet(t));
   for (const city of startsOf(n)) spread(priv.filter((t) => dist(t, city) <= 2), 2, 'wheat');
   for (const city of startsOf(n)) spread(priv.filter((t) => dist(t, city) <= 2), 1, 'raw');
   spread(priv, PRIVATE_WHEAT, 'wheat');
@@ -251,6 +265,8 @@ for (const n of nations) {
     `${NATIONS[n].college.padEnd(22)} ${NATIONS[n].slot.padEnd(14)} ${startsOf(n).map((s) => cityAt.get(s)).join(' + ').padEnd(36)} grab ${grab ? cityAt.get(grab) : '-'}; contested ${contested.join(', ')}; private wheat ${priv.filter(hasWheat).length} raw ${priv.filter(hasRaw).length}`,
   );
 }
+const ports = cityIds.filter((c) => onStreet(c) || ids.some((t) => onStreet(t) && dist(t, c) === 1));
+console.log(`riverside cities (ships can be built): ${ports.map((c) => cityAt.get(c)).join(', ')}`);
 console.log(`${ids.length} tiles, ${cityIds.length} cities (${starting.size} starting, ${openOf.size} open)`);
 if (problems.length) {
   console.log('PROBLEMS\n' + problems.join('\n'));
@@ -271,7 +287,7 @@ if (process.argv.includes('--write') && problems.length === 0) {
     const start = startOf.get(id);
     return `  [${q}, ${r}, '${clsOf(id)}', '${res}'${city ? `, ${JSON.stringify(city)}` : ''}${start ? `, '${NATIONS[start].slot}'` : ''}],`;
   });
-  const tints = Object.fromEntries([...nations.map((n) => [n, NATIONS[n].tint]), ['v', VILLAGE_TINT]]);
+  const tints = Object.fromEntries([...nations.map((n) => [n, NATIONS[n].tint]), ['v', VILLAGE_TINT], ...Object.keys(STREETS).map((k) => [k, STREET_TINT])]);
   const factions = nations.map((n) => {
     const d = NATIONS[n];
     return `  { id: '${d.slot}', allianceId: '${d.team}', name: ${JSON.stringify(d.name)}, color: '${d.color}', royal: ${d.royal} }, // ${d.college}`;
@@ -288,12 +304,15 @@ import type { FactionDef } from '../engine/types';
  * to take on the first turn and two contested ones shared with a nation of
  * another team, and the same number of wheat and raw-material tiles that only
  * its own farmers can reach.
- * Rows are [q, r, ground (nation letter, v village, n neutral), resources (w wheat,
- * t wood, s stone, i iron), city?, starting faction?].
+ * Four streets run as navigable rivers one hex wide (decision 117).
+ * Rows are [q, r, ground (nation letter, v village, n neutral, a digit for a street),
+ * resources (w wheat, t wood, s stone, i iron), city?, starting faction?].
  */
 type Row = [number, number, string, string, string?, string?];
 
 const TINTS: Record<string, string> = ${JSON.stringify(tints)};
+
+const STREETS: Record<string, string> = ${JSON.stringify(STREETS)};
 
 const ROWS: Row[] = [
 ${rows.join('\n')}
@@ -305,6 +324,7 @@ function build(): MapSpec {
     for (const ch of res) resources.push(({ w: 'wheat', t: 'wood', s: 'stone', i: 'iron' } as const)[ch as 'w']);
     const t: TileSpec = { q, r, base: 'auto', seaEdges: [], resources };
     if (TINTS[ground]) t.tint = TINTS[ground];
+    if (STREETS[ground]) t.river = STREETS[ground];
     if (city) t.city = { name: city, slot: slot ?? 'neutral' };
     return t;
   });

@@ -138,7 +138,8 @@ export function retreatTileAvailable(state: GameState, tileId: TileId, allianceI
 /**
  * Retreat options for surviving soldiers of an alliance in a tile (ruling 24).
  * Land retreats cross non-mountain land edges; ship retreats need a ship of
- * the alliance in the tile (one per soldier) and cross a sea edge.
+ * the alliance in the tile (one per soldier) and cross a sea edge. A river edge is
+ * crossed on foot (decision 117).
  */
 export function retreatOptions(state: GameState, tileId: TileId, allianceId: AllianceId, soldiers: Unit[]): { units: RetreatOption[]; shipsAvailable: number } {
   const ships = shipsOnTile(state, tileId).filter((s) => allianceOf(state, s.ownerId) === allianceId);
@@ -146,7 +147,7 @@ export function retreatOptions(state: GameState, tileId: TileId, allianceId: All
   const units: RetreatOption[] = soldiers.map((s) => ({
     unitId: s.id,
     destinations: dests
-      .filter((d) => d.via === 'land' || ships.length > 0)
+      .filter((d) => d.via !== 'sea' || ships.length > 0)
       .map((d) => ({ tileId: d.tileId, byShip: d.via === 'sea' })),
   }));
   return { units, shipsAvailable: ships.length };

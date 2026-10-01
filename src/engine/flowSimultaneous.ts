@@ -25,7 +25,7 @@ import { SIM_ROUNDS } from './types';
 import type { Action, AllianceId, CombatRecord, CombatSide, GameState, PendingDecision, PlayerId, ResolutionReport, SimForce, SimRoundState, Task, Unit } from './types';
 import { label, log, moveUnit, popTask, pushFront, reactionCandidates, removeUnit, require, sinkUnmannedShipsAtSea, tLabel } from './core';
 import { allianceName, allianceOf, generalOf, shipsOnTile, soldiersOnTile, tile, unmannedShipsOfAlliance } from './query';
-import { destinationsFrom, orderableSourceTiles, validateOrder } from './rules/movement';
+import { boardingParty, destinationsFrom, orderableSourceTiles, validateOrder } from './rules/movement';
 import { rollSide } from './rules/combat';
 import { describeGroup, destroyEnemyFarmers, pairForSea, seizeShips, subPhaseName } from './flowMilitary';
 
@@ -141,7 +141,7 @@ function taskSimPrepare(state: GameState): void {
     for (const g of order.groups) {
       const via = dests.get(g.destTileId)!.via;
       let moving: Unit[] = g.unitIds.filter((id) => !refused.has(id) && state.units[id]?.tileId === order.sourceTileId).map((id) => state.units[id]);
-      if (via === 'sea') moving = pairForSea(state, moving, order.sourceTileId, g.destTileId);
+      moving = boardingParty(moving, via, order.subPhase, (us) => pairForSea(state, us, order.sourceTileId, g.destTileId));
       const soldiers = moving.filter((u) => u.kind === 'soldier').length;
       if (soldiers === 0) {
         log(state, 'order', `No units march from ${tLabel(state, order.sourceTileId)} to ${tLabel(state, g.destTileId)}.`);

@@ -10,7 +10,8 @@ import type { RngState } from '../engine/rng';
 import { FOOD_PER_WHEAT, allianceOf, capacityOf, citiesOf, cityCount, isGeneral, membersOf, shipsOnTile, soldierCount, soldiersOnTile, tile, unitsOnTile } from '../engine/query';
 import { checkAllocation, emptyAllocation } from '../engine/rules/allocation';
 import { legalFarmerTiles, legalShipTiles } from '../engine/rules/deploy';
-import { legalDestinations, movableUnitsAt, validateOrder } from '../engine/rules/movement';
+import { isShipPhase, legalDestinations, movableUnitsAt, validateOrder } from '../engine/rules/movement';
+import type { Destination } from '../engine/rules/movement';
 import { defenderBonusPerSoldier } from '../engine/rules/combat';
 import { CARD_BY_TYPE } from '../data/cards';
 import { hasSeaEdge } from '../engine/map';
@@ -358,7 +359,7 @@ function planFromTile(state: GameState, alliance: AllianceId, src: string, sub: 
   const agreed = understandings(state, alliance);
   const truce = new Set(agreed.truce);
   const joint = new Set(agreed.joint);
-  let best: { score: number; dest: string; via: 'land' | 'sea'; count: number } | null = null;
+  let best: { score: number; dest: string; via: Destination['via']; sailing: boolean; count: number } | null = null;
   for (const d of dests) {
     const dt = tile(state, d.tileId);
     const enemies = soldiersOnTile(state, d.tileId).filter((u) => allianceOf(state, u.ownerId) !== alliance);
@@ -373,7 +374,9 @@ function planFromTile(state: GameState, alliance: AllianceId, src: string, sub: 
       if (simultaneous && Object.values(state.units).some((u) => u.kind === 'soldier' && truce.has(allianceOf(state, u.ownerId)) && hexDistance(state.tiles[u.tileId], dt) === 1)) continue;
     }
     const enemyFarmers = unitsOnTile(state, d.tileId).some((u) => u.kind === 'farmer' && allianceOf(state, u.ownerId) !== alliance);
-    const maxCount = d.via === 'sea' ? Math.min(spare, ships.length) : spare;
+    // over the sea, or along a river in the ship rounds, every soldier needs a ship (decision 117)
+    const sailing = d.via === 'sea' || (d.via === 'river' && isShipPhase(sub));
+    const maxCount = sailing ? Math.min(spare, ships.length) : spare;
     if (maxCount <= 0) continue;
     let score = 0;
     let count = 1;
@@ -416,19 +419,22 @@ function planFromTile(state: GameState, alliance: AllianceId, src: string, sub: 
       count = maxCount;
     }
     if (holder && joint.has(holder)) score += 8;
-    if (d.via === 'sea') score += 2; // ships are fun
-    if (!best || score > best.score) best = { score, dest: d.tileId, via: d.via, count };
+    if (sailing) score += 2; // ships are fun
+    if (!best || score > best.score) best = { score, dest: d.tileId, via: d.via, sailing, count };
   }
   if (!best) return null;
   const movingSoldiers = soldiers.slice(0, best.count);
   const unitIds = movingSoldiers.map((u) => u.id);
-  if (best.via === 'sea') {
+  if (best.sailing) {
     const pool = [...ships];
     for (const s of movingSoldiers) {
       let idx = pool.findIndex((x) => x.ownerId === s.ownerId);
       if (idx < 0) idx = 0;
       unitIds.push(pool.splice(idx, 1)[0].id);
     }
+  } else if (best.via === 'river') {
+    // marching along a river: the ships go with the army rather than be left unmanned
+    for (const sh of ships.slice(0, movingSoldiers.length)) unitIds.push(sh.id);
   }
   return { score: best.score, groups: [{ destTileId: best.dest, unitIds }] };
 }

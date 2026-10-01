@@ -32,6 +32,8 @@ export type EdgeType = 'sea' | 'land';
 export interface Edge {
   type: EdgeType;
   mountain?: boolean;
+  /** a land edge ships may also cross: along a river, or between a river and a city on its bank (decision 117) */
+  river?: boolean;
 }
 
 export type Resource = 'wheat' | 'wood' | 'stone' | 'iron' | 'fish';
@@ -59,6 +61,8 @@ export interface Tile {
   resources: Resource[];
   /** optional ground colour for the board (purely visual) */
   tint?: string;
+  /** the name of the river running through this land tile (decision 117) */
+  river?: string;
 }
 
 export type TileType = 'sea' | 'land' | 'coastal';
@@ -207,7 +211,7 @@ export interface SimForce {
   generalId: PlayerId;
   from: TileId;
   to: TileId;
-  via: 'land' | 'sea';
+  via: 'land' | 'sea' | 'river';
   unitIds: UnitId[];
   /** size when the orders were revealed */
   soldiers: number;

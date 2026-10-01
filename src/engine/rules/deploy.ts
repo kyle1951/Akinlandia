@@ -91,10 +91,10 @@ export function legalFarmerTiles(state: GameState, playerId: PlayerId): FarmerLe
   return out;
 }
 
-/** Coastal or island city tiles controlled by the player (ruling 13). */
+/** Coastal, island or riverside city tiles controlled by the player (ruling 13, decision 117). */
 export function legalShipTiles(state: GameState, playerId: PlayerId): TileId[] {
   return citiesOf(state, playerId)
-    .filter((t) => hasSeaEdge(t))
+    .filter((t) => hasSeaEdge(t) || t.edges.some((e) => e.river))
     .map((t) => t.id)
     .sort();
 }

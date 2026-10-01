@@ -19,6 +19,8 @@ export interface TileSpec {
   resources?: Resource[];
   /** optional ground colour for the board (purely visual) */
   tint?: string;
+  /** a land tile a navigable river runs through, by the river's name (decision 117) */
+  river?: string;
 }
 
 export interface MountainSpec {
@@ -132,6 +134,7 @@ export function buildTiles(spec: MapSpec, slotOwners: Record<string, string | un
       city: null,
       resources: [...(t.resources ?? [])],
       ...(t.tint ? { tint: t.tint } : {}),
+      ...(t.river ? { river: t.river } : {}),
     };
     if (t.city) {
       const owner = t.city.slot === 'neutral' ? undefined : slotOwners[t.city.slot];
@@ -146,6 +149,16 @@ export function buildTiles(spec: MapSpec, slotOwners: Record<string, string | un
       };
     }
     tiles[id] = tile;
+  }
+  // river edges (decision 117): land edges between two river tiles, or between a river and a city on its bank
+  for (const tile of Object.values(tiles)) {
+    for (let d = 0; d < 6; d++) {
+      const n = neighbor({ q: tile.q, r: tile.r }, d);
+      const other = tiles[tileId(n.q, n.r)];
+      const e = tile.edges[d];
+      if (!other || e.type !== 'land' || e.mountain) continue;
+      if ((tile.river && (other.river || other.city)) || (tile.city && other.river)) e.river = true;
+    }
   }
 
   validateTiles(tiles, spec.id);
@@ -166,6 +179,9 @@ export function validateTiles(tiles: Record<TileId, Tile>, label = 'map'): void 
       }
       if (!!mine.mountain !== !!theirs.mountain) {
         throw new Error(`${label}: mountain mismatch between ${tile.id} and ${other.id}`);
+      }
+      if (!!mine.river !== !!theirs.river) {
+        throw new Error(`${label}: river mismatch between ${tile.id} and ${other.id}`);
       }
     }
   }

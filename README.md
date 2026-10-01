@@ -32,7 +32,8 @@ failing seed and prints the state around the failing action.
 
 1. **Setup screen.** Choose 3 to 9 seats, name each leader (and give them a silly leader name for the order
    announcements), and mark each seat human or bot. Pick Quick Start (a preset map: the designed board, the
-   photographed Table of 2026, Eurasia, or the Claremont Colleges: nine nations in three teams, out to the Villages) or Full Game (build the map tile by tile), optionally turn on "Always prompt every eligible player" at reaction windows or the
+   photographed Table of 2026, Eurasia, or the Claremont Colleges: nine nations in three teams, out to the Villages, with Foothill, Claremont
+   Blvd, Dartmouth and 6th St as navigable rivers) or Full Game (build the map tile by tile), optionally turn on "Always prompt every eligible player" at reaction windows or the
    optional house rules (food spoils above a cap per city held; a hand limit of 7 cards), pick how
    bloody combat is (by default only a 6 kills an enemy soldier, as in the rules; or, as a variant, every 4, 5 or 6), choose
    simultaneous (the default: Generals write secret orders, then everything resolves at once and a
@@ -92,7 +93,8 @@ Each **turn** has three phases.
   coastal cities; soldiers in any city; everyone draws one politician card for free.
 - **Military movement and combat.** In four sub-phases (Ships 1, Ships 2, Full 1, Full 2) each General, in
   alliance order, issues orders one tile at a time: "I, SINCLAIR THE GREAT, ISSUE A FINAL ORDER ...". Only
-  manned ships (one soldier per ship) move in the ship sub-phases. A tile holds pieces of one alliance
+  manned ships (one soldier per ship) move in the ship sub-phases. Rivers (decision 117) are land that ships
+  can also sail along, into the cities on their banks. A tile holds pieces of one alliance
   only, so entering an enemy tile means combat: one d6 per non-spent soldier, the defender adds +2 per
   soldier, +1 more in a city and +1 more behind Walls; every 6 is a hit. Higher score wins the tile; ties
   and mutual annihilation favour the defender. Losing defenders retreat and are spent for the sub-phase.

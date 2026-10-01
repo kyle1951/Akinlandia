@@ -8,7 +8,7 @@ import type { Action, AllianceId, CardType, CombatRecord, CombatSide, GameState,
 import { cardName, createUnit, discardFromHand, enemyShipsOnTile, label, log, moveUnit, popTask, pushFront, reactionCandidates, removeUnit, require, sinkUnmannedShipsAtSea, tLabel } from './core';
 import { allianceName, allianceOf, cityCount, farmersOnTile, generalOf, membersOf, shipsOnTile, soldiersOnTile, tile, unitsOnTile, unmannedShipsOfAlliance } from './query';
 import { hasSeaEdge } from './map';
-import { destinationsFrom, movableUnitsAt, orderableSourceTiles, validateOrder } from './rules/movement';
+import { boardingParty, destinationsFrom, movableUnitsAt, orderableSourceTiles, validateOrder } from './rules/movement';
 import { enemySoldiersOnTile, finalControl, retreatOptions, rollSide, shipsLostWithSoldiers } from './rules/combat';
 import { sequentialOrder } from './rules/turnOrder';
 
@@ -165,7 +165,7 @@ function taskExecuteOrder(state: GameState, task: Extract<Task, { kind: 'execute
     const units = g.unitIds.filter((id) => !refused.has(id) && state.units[id] && state.units[id].tileId === order.sourceTileId);
     const via = dests.get(g.destTileId)!.via;
     let moving: Unit[] = units.map((id) => state.units[id]);
-    if (via === 'sea') moving = pairForSea(state, moving, order.sourceTileId, g.destTileId);
+    moving = boardingParty(moving, via, order.subPhase, (us) => pairForSea(state, us, order.sourceTileId, g.destTileId));
     if (moving.filter((u) => u.kind === 'soldier').length === 0) {
       log(state, 'order', `No units move to ${tLabel(state, g.destTileId)}.`);
       continue;

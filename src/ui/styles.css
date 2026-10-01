@@ -154,6 +154,32 @@ select {
   fill: var(--sea);
   stroke: none;
 }
+.river-bank {
+  fill: none;
+  stroke: #2a5390;
+  stroke-width: 17;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.river-water {
+  fill: none;
+  stroke: #5b93d6;
+  stroke-width: 12;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.river-label {
+  font-size: 11px;
+  font-style: italic;
+  font-weight: bold;
+  fill: #1d3f73;
+  stroke: #fff;
+  stroke-width: 3;
+  paint-order: stroke;
+  text-anchor: middle;
+  pointer-events: none;
+  font-family: Georgia, serif;
+}
 .mountain {
   stroke: #6b3f1d;
   stroke-width: 6;

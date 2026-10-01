@@ -284,3 +284,24 @@ Both are off by default and are switched on in the setup screen or the online lo
       - Partners in an agreed joint attack are at peace with each other.
       - Only an assault, or a march into the other's tile across the same border, counts as betrayal; a contest for empty ground does not.
       - Betrayal complaints fell from 4 to 1.2 a game.
+
+### Rivers: the Claremont streets (requested 2026-10-01)
+
+117. **Navigable rivers, one hex wide.** The request: "represent foothill, Claremont Ave, Dartmouth, and 6th streets as navigable 1-hex wide rivers." The memo lists river tiles among the future features: "River tiles would be passable by land in all directions and by ship in the direction of the river." The build brief deferred them; this request brings them in, on that definition.
+    - **Tiles.** A river tile is a land tile with a river's name (`Tile.river`). Edges between two river tiles, and between a river tile and a city beside it, are *river edges* (`Edge.river`). River edges are land edges in every other respect, and both sides of each one must agree.
+    - **Movement.** Soldiers cross any river edge on foot, like any land edge, and only in the full rounds. A manned ship sails across river edges: up the river, down the river, or into and out of a city on its bank.
+      - In the ship rounds, only ship-and-soldier pairs move along a river, as at sea.
+      - In the full rounds, soldiers may march along a river and take up to one ship each with them. Every ship that moves needs a soldier.
+      - Ships never cross an ordinary land edge, so "in the direction of the river" means along the river's own course. Ships can also reach the cities on its banks, since a ship must be built somewhere and a river without a port is useless.
+    - **Ships.** They are built in cities on or beside a river, alongside coastal and island cities (ruling 13). A river tile has land, so an unmanned ship there is not lost at sea; anyone may capture it, as on a coast. A retreat across a river edge goes on foot. Farmers still reach only by land or by sea chains (ruling 11); a river carries no farmers.
+    - **The Claremont map.** The generator (`scripts/genClaremont.ts`) draws the four streets (Claremont Blvd for the user's "Claremont Ave"):
+      - **Foothill Blvd** is a new row across the north, with the Botanic Garden beyond it.
+      - **Claremont Blvd** is a new column down the east side of Pitzer and CMC.
+      - **6th St** is a new row between Pomona and the colleges to its north.
+      - **Dartmouth Ave** runs down the column between CGU and Mudd/Scripps from Foothill to 6th St, taking those cells. Honnold Library stands on it.
+    - **Generator rules.**
+      - No field and no first-turn city lies on a street.
+      - A contested city may stand on a street where two nations meet across it, with a small penalty so off-street cells win when they also fit.
+      - The extra 6th St row put another hex between the nations on either side of it. Walker Beach and Huntley Bookstore each moved one hex so that Big Bridges and The New Village still fit by rule.
+    - **Ports.** Riverside cities: Galileo Hall, Hixon Court, Denison Library, Frary, Walker Beach, Honnold Library, Huntley Bookstore, and the open cities The Tropical Lei, Big Bridges, Botanic Garden, The Motley, Roberts Pavilion, 21 Choices, The Mall, Smith Campus Center, Drucker School and The Old Village.
+    - **Bots.** They sail along rivers in the ship rounds and take their ships with them when they march along one. In 32 nine-player bot games they built about 12 ships a game and sailed a river about 15 times a game.

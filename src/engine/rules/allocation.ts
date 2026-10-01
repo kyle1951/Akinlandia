@@ -48,8 +48,8 @@ export function checkAllocation(state: GameState, playerId: PlayerId, a: Allocat
 
   // Placement warnings (decision 50): count what could legally be placed.
   const cities = Object.values(state.tiles).filter((t) => t.city && t.city.ownerId === playerId);
-  const coastalCities = cities.filter((t) => t.edges.some((e) => e.type === 'sea'));
-  if (a.ships > 0 && coastalCities.length === 0) warnings.push('You control no coastal city: ships cannot be placed and would be lost.');
+  const coastalCities = cities.filter((t) => t.edges.some((e) => e.type === 'sea' || e.river));
+  if (a.ships > 0 && coastalCities.length === 0) warnings.push('You control no coastal or riverside city: ships cannot be placed and would be lost.');
   if (a.soldiers > 0 && cities.length === 0) warnings.push('You control no city: soldiers cannot be placed and would be lost.');
   const levelUpRoom = cities.reduce((n, t) => n + (3 - t.city!.level), 0);
   if (a.levelUps > levelUpRoom) warnings.push(`Only ${levelUpRoom} city level improvement(s) can be placed; the rest would be lost.`);

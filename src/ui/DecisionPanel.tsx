@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import type { Action, AllianceId, Allocation, BuildingKind, BuildingPlacement, GameState, MoveGroup, PendingDecision, PlayerId, SheetOrder, SubPhase } from '../engine/types';
 import { checkAllocation, emptyAllocation } from '../engine/rules/allocation';
 import { checkBuildingPlacements } from '../engine/rules/deploy';
-import { destinationsFrom, movableUnitsAt, validateOrder } from '../engine/rules/movement';
+import { destinationsFrom, isShipPhase, movableUnitsAt, validateOrder } from '../engine/rules/movement';
 import { allianceName, capacityOf, cityCount, tile, unitsOnTile } from '../engine/query';
 import { tileLabel } from '../engine/map';
 import { CARD_BY_TYPE } from '../data/cards';
@@ -489,11 +489,12 @@ function useOrderBuilder(game: GameState, allianceId: AllianceId, subPhase: SubP
     setSource(null);
     setAssign({});
   };
-  /** one soldier (and a ship when crossing the sea) from the first group with units left */
+  /** one soldier (and a ship when crossing the sea, or sailing a river in a ship round) from the first group with units left */
   const quickAssign = (id: string) =>
     setAssign((a) => {
       const cur = { ...(a[id] ?? {}) };
-      const sea = dests.find((d) => d.tileId === id)?.via === 'sea';
+      const via = dests.find((d) => d.tileId === id)?.via;
+      const sea = via === 'sea' || (via === 'river' && isShipPhase(subPhase));
       const sg = groups.find((g) => g.kind === 'soldier' && used(g.key) < g.ids.length);
       if (!sg) return a;
       cur[sg.key] = (cur[sg.key] ?? 0) + 1;
@@ -535,12 +536,12 @@ function DestinationCounters({ game, b }: { game: GameState; b: OrderBuilder }) 
       {b.dests.map((d) => (
         <div key={d.tileId} style={{ border: '1px solid #b59f75', borderRadius: 4, padding: 4, margin: '4px 0' }}>
           <b>
-            To {tileLabel(tile(game, d.tileId))} <span className="chip">{d.via === 'sea' ? 'by sea' : 'by land'}</span>
+            To {tileLabel(tile(game, d.tileId))} <span className="chip">{d.via === 'sea' ? 'by sea' : d.via === 'river' ? 'by river' : 'by land'}</span>
           </b>{' '}
           {describeOccupants(game, d.tileId)}
           <div>
             {b.groups
-              .filter((g) => (d.via === 'sea' ? true : g.kind === 'soldier'))
+              .filter((g) => (d.via === 'land' ? g.kind === 'soldier' : true))
               .map((g) => (
                 <span key={g.key} style={{ marginRight: 10 }}>
                   <PlayerSwatch game={game} pid={g.ownerId} />

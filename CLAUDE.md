@@ -93,7 +93,8 @@ npm run deploy     # vite build + wrangler deploy (needs `npx wrangler login` on
   immediately (ruling 18) so the "one alliance per tile" invariant holds after every action.
 - Every roll, shuffle and draw goes through `state.rng`. Log every roll and combat calculation with `log()`.
 - Keep units, buildings, cards and tiles data-driven; the memo's future features (factions, gold, trade,
-  knights, diplomacy, river tiles) are deliberately not implemented.
+  knights, diplomacy, river tiles) are deliberately not implemented, except where a request brought one
+  in: word-only diplomacy (decisions 112, 114) and navigable river tiles (`Tile.river`, `Edge.river`; decision 117).
 - Tests: `tests/helpers.ts` has scenario builders (`newGame`, `toMilitary`, `setActing`, `addUnit`,
   `setRolls` for controlled dice, `giveCard`). Green moves last in the default alliance order, so a Green
   sentinel unit keeps a sub-phase open in movement/combat scenarios.

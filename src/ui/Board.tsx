@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from 'react';
 import type { GameState, Tile, Unit } from '../engine/types';
-import { edgeCorners, hexCorners, hexToPixel, parseTileId } from '../engine/hex';
+import { edgeCorners, hexCorners, hexToPixel, neighbor, parseTileId, tileId } from '../engine/hex';
 import { tileType } from '../engine/map';
 import { ALLIANCE_COLORS } from '../data/factions';
 
@@ -76,6 +76,20 @@ export function Board({ game, highlights, onTileClick, showCoords, arrows = [], 
     return { minX: minX - 20, minY: minY - 20, w: maxX - minX + 40, h: maxY - minY + 40 };
   }, [tiles, ghosts]);
 
+  // one name label per river, on the uninhabited tile nearest the middle of its course
+  const riverLabels = useMemo(() => {
+    const byName = new Map<string, Tile[]>();
+    for (const t of tiles) if (t.river) byName.set(t.river, [...(byName.get(t.river) ?? []), t]);
+    return [...byName].map(([name, ts]) => {
+      const course = ts.sort((a, b) => a.q - b.q || a.r - b.r);
+      const open = course.filter((t) => !t.city);
+      const at = (open.length ? open : course)[Math.floor((open.length ? open : course).length / 2)];
+      return { name, ...hexToPixel(at, SIZE) };
+    });
+  }, [tiles]);
+
+  const riverLinks = useMemo(() => riverCourse(game.tiles), [game.tiles]);
+
   const hl = useMemo(() => {
     const m = new Map<string, HighlightKind>();
     for (const h of highlights) m.set(h.tileId, h.kind);
@@ -141,7 +155,12 @@ export function Board({ game, highlights, onTileClick, showCoords, arrows = [], 
     >
       <g transform={`translate(${bounds.minX + bounds.w / 2} ${bounds.minY + bounds.h / 2}) scale(${view.k}) translate(${-(bounds.minX + bounds.w / 2) + view.x} ${-(bounds.minY + bounds.h / 2) + view.y})`}>
         {tiles.map((t) => (
-          <TileView key={t.id} tile={t} game={game} units={unitsByTile.get(t.id) ?? []} highlight={hl.get(t.id)} onClick={() => clickTile(t.id)} showCoords={!!showCoords} />
+          <TileView key={t.id} tile={t} game={game} units={unitsByTile.get(t.id) ?? []} highlight={hl.get(t.id)} onClick={() => clickTile(t.id)} showCoords={!!showCoords} riverDirs={riverLinks.get(t.id)} />
+        ))}
+        {riverLabels.map((l) => (
+          <text key={`river-${l.name}`} className="river-label" x={l.x} y={l.y - SIZE * 0.55}>
+            {l.name}
+          </text>
         ))}
         {arrows.map((a, i) => (
           <Arrow key={`arrow-${i}`} arrow={a} />
@@ -175,7 +194,7 @@ export function Board({ game, highlights, onTileClick, showCoords, arrows = [], 
   );
 }
 
-function TileView({ tile, game, units, highlight, onClick, showCoords }: { tile: Tile; game: GameState; units: Unit[]; highlight?: HighlightKind; onClick: () => void; showCoords: boolean }) {
+function TileView({ tile, game, units, highlight, onClick, showCoords, riverDirs }: { tile: Tile; game: GameState; units: Unit[]; highlight?: HighlightKind; onClick: () => void; showCoords: boolean; riverDirs?: number[] }) {
   const c = hexToPixel(tile, SIZE);
   const corners = hexCorners(c.x, c.y, SIZE);
   const type = tileType(tile);
@@ -190,6 +209,7 @@ function TileView({ tile, game, units, highlight, onClick, showCoords }: { tile:
           const pts = [corners[a], corners[b], inset(corners[b], 0.38), inset(corners[a], 0.38)];
           return <polygon key={d} className="shore" points={pointsStr(pts)} />;
         })}
+      {riverDirs && <RiverView dirs={riverDirs} cx={c.x} cy={c.y} corners={corners} />}
       {tile.edges.map((e, d) => {
         if (!e.mountain) return null;
         const [a, b] = edgeCorners(d);
@@ -215,6 +235,56 @@ function TileView({ tile, game, units, highlight, onClick, showCoords }: { tile:
         </text>
       )}
       {highlight && <polygon className={`hex-highlight ${highlight}`} points={pointsStr(corners.map((p) => inset(p, 0.06)))} />}
+    </g>
+  );
+}
+
+/**
+ * How each river tile's water is drawn (decision 117): toward the neighbours on the same river,
+ * and from a river's end into the one tile of the river it flows into (straight on where possible).
+ * Purely visual; ships may cross every river edge.
+ */
+function riverCourse(tiles: Record<string, Tile>): Map<string, number[]> {
+  const out = new Map<string, number[]>();
+  const at = (t: Tile, d: number) => {
+    const n = neighbor({ q: t.q, r: t.r }, d);
+    return tiles[tileId(n.q, n.r)];
+  };
+  for (const t of Object.values(tiles)) {
+    if (!t.river) continue;
+    const same = [0, 1, 2, 3, 4, 5].filter((d) => at(t, d)?.river === t.river);
+    out.set(t.id, same);
+  }
+  for (const t of Object.values(tiles)) {
+    const same = out.get(t.id);
+    if (!same || same.length > 1) continue;
+    const other = [0, 1, 2, 3, 4, 5].filter((d) => at(t, d)?.river && at(t, d).river !== t.river);
+    if (!other.length) continue;
+    const ahead = same.length ? (same[0] + 3) % 6 : other[0];
+    const d = other.includes(ahead) ? ahead : other.sort((a, b) => Math.abs(((a - ahead + 9) % 6) - 3) - Math.abs(((b - ahead + 9) % 6) - 3))[0];
+    same.push(d);
+    const back = out.get(at(t, d).id)!;
+    if (!back.includes((d + 3) % 6)) back.push((d + 3) % 6);
+  }
+  return out;
+}
+
+/** A river tile's water: a curve through the tile between the edges where the river enters and leaves. */
+function RiverView({ dirs, cx, cy, corners }: { dirs: number[]; cx: number; cy: number; corners: { x: number; y: number }[] }) {
+  const mid = (d: number) => {
+    const [a, b] = edgeCorners(d);
+    return { x: ((corners[a].x + corners[b].x) / 2).toFixed(1), y: ((corners[a].y + corners[b].y) / 2).toFixed(1) };
+  };
+  let path: string;
+  if (dirs.length === 2) {
+    const [a, b] = dirs.map(mid);
+    path = `M ${a.x} ${a.y} Q ${cx} ${cy} ${b.x} ${b.y}`;
+  } else if (dirs.length === 0) path = `M ${cx - 1} ${cy} L ${cx + 1} ${cy}`;
+  else path = dirs.map((d) => `M ${cx} ${cy} L ${mid(d).x} ${mid(d).y}`).join(' ');
+  return (
+    <g pointerEvents="none">
+      <path d={path} className="river-bank" />
+      <path d={path} className="river-water" />
     </g>
   );
 }

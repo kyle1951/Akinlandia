@@ -15,7 +15,8 @@ export function movableUnitsAt(state: GameState, allianceId: AllianceId, tileId:
 
 export interface Destination {
   tileId: TileId;
-  via: 'land' | 'sea';
+  /** 'river': a land edge manned ships may also cross (decision 117) */
+  via: 'land' | 'sea' | 'river';
 }
 
 /** Adjacent tiles reachable from a tile, with the crossing type (mountains excluded). */
@@ -25,7 +26,7 @@ export function destinationsFrom(state: GameState, tileId: TileId): Destination[
   for (const { dir, tile: n } of neighborsOf(state, tileId)) {
     const e = t.edges[dir];
     if (e.type === 'sea') out.push({ tileId: n.id, via: 'sea' });
-    else if (!e.mountain && !n.edges[oppositeDir(dir)].mountain) out.push({ tileId: n.id, via: 'land' });
+    else if (!e.mountain && !n.edges[oppositeDir(dir)].mountain) out.push({ tileId: n.id, via: e.river ? 'river' : 'land' });
   }
   return out;
 }
@@ -38,6 +39,7 @@ export function legalDestinations(state: GameState, allianceId: AllianceId, tile
   if (soldiers === 0) return [];
   return destinationsFrom(state, tileId).filter((d) => {
     if (d.via === 'sea') return ships > 0;
+    if (d.via === 'river') return ships > 0 || !isShipPhase(sub);
     return !isShipPhase(sub);
   });
 }
@@ -83,10 +85,27 @@ export function validateOrder(state: GameState, allianceId: AllianceId, sub: Sub
     if (d.via === 'sea') {
       if (soldiers !== ships) throw new RulesError(`Crossing a sea edge to ${g.destTileId}: every ship must carry exactly one soldier (${soldiers} soldiers, ${ships} ships)`);
       if (soldiers === 0) throw new RulesError(`Nothing manned is moving to ${g.destTileId}`);
+    } else if (d.via === 'river') {
+      // along a river soldiers may march or sail; every ship needs a soldier aboard, and in the ship rounds every soldier a ship
+      if (soldiers === 0) throw new RulesError(`No soldiers moving to ${g.destTileId}`);
+      if (ships > soldiers) throw new RulesError(`Sailing to ${g.destTileId}: every ship must carry a soldier (${soldiers} soldiers, ${ships} ships)`);
+      if (isShipPhase(sub) && ships !== soldiers) throw new RulesError(`Only manned ships may move during ${sub}: send one ship per soldier to ${g.destTileId}`);
     } else {
       if (isShipPhase(sub)) throw new RulesError(`Only manned ships may move during ${sub}; ${g.destTileId} is reached over land`);
       if (ships > 0) throw new RulesError(`Ships cannot cross a land edge to ${g.destTileId}`);
       if (soldiers === 0) throw new RulesError(`No soldiers moving to ${g.destTileId}`);
     }
   }
+}
+
+/**
+ * The units that actually set off across an edge (decision 117): over the sea only manned
+ * ship pairs; along a river in the ship rounds the same, otherwise every soldier marches
+ * and at most one ship per soldier sails with them.
+ */
+export function boardingParty<U extends Pick<Unit, 'kind'>>(units: U[], via: Destination['via'], sub: SubPhase, pair: (units: U[]) => U[]): U[] {
+  if (via === 'sea' || (via === 'river' && isShipPhase(sub))) return pair(units);
+  if (via === 'land') return units;
+  const soldiers = units.filter((u) => u.kind === 'soldier');
+  return [...soldiers, ...units.filter((u) => u.kind === 'ship').slice(0, soldiers.length)];
 }
