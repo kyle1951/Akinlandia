@@ -3,6 +3,7 @@ import type { MapSpec, MountainSpec, TileSpec } from '../engine/map';
 import { TABLE_MAP, TABLE_SLOTS } from './tableMap';
 import { EURASIA_MAP, EURASIA_SLOTS } from './eurasiaMap';
 import { CLAREMONT_FACTIONS, CLAREMONT_MAP, CLAREMONT_SLOTS } from './claremontMap';
+import { CLAREMONT_FAITHFUL_MAP } from './claremontFaithfulMap';
 import type { FactionDef } from '../engine/types';
 
 /**
@@ -136,6 +137,9 @@ export interface PresetMap {
   leaderNames?: string[];
 }
 
+// the table's other nation-name ideas, as leader names (2026-09-30)
+const CLAREMONT_LEADER_NAMES = ['The Ambition of the Athenaeum', 'Crusaders of Collins', 'Hixon Hermits', 'Martyrs of Mall', 'The Sensitive of Seal', 'The Grievers of Green', 'Bridges Brigade', 'The Guilt of Grove', 'Moralizers of Mead'];
+
 export const MAPS: Record<string, PresetMap> = {
   quickstart: { spec: QUICK_START_MAP, slots: QUICK_START_SLOTS, description: 'The Akinlandian Sea: a symmetric 91-hex board designed for the digital game.' },
   table2026: { spec: TABLE_MAP, slots: TABLE_SLOTS, description: 'The Table of 2026: the hand-painted board from the last live game, reconstructed from photographs.' },
@@ -143,9 +147,15 @@ export const MAPS: Record<string, PresetMap> = {
   claremont: {
     spec: CLAREMONT_MAP,
     slots: CLAREMONT_SLOTS,
-    description: 'The Claremont Colleges: nine nations in three teams. CMS (North Quad Networkers, Grinders of Galileo, Feelers of Fowler), the Sagehens (The Frary Feast, Monologuers of Marston, Munchers of Mound) and the Grad Schools (Dissertators of Drucker, Pipette Priests of Kresge, Hushers of Honnold). Every nation has a city to grab on the first turn and two to fight over, out to the Villages and 21 Choices. Landlocked: no ships.',
+    description: 'The Claremont Colleges: nine nations in three teams. CMS (North Quad Networkers, Grinders of Galileo, Feelers of Fowler), the Sagehens (The Frary Feast, Monologuers of Marston, Munchers of Mound) and the Grad Schools (Dissertators of Drucker, Pipette Priests of Kresge, Hushers of Honnold). Every nation has a city to grab on the first turn and two to fight over, out to the Villages and 21 Choices. No sea, but Foothill, Claremont Blvd, Dartmouth and 6th St run as navigable rivers.',
     factions: CLAREMONT_FACTIONS,
-    // the table's other nation-name ideas, as leader names (2026-09-30)
-    leaderNames: ['The Ambition of the Athenaeum', 'Crusaders of Collins', 'Hixon Hermits', 'Martyrs of Mall', 'The Sensitive of Seal', 'The Grievers of Green', 'Bridges Brigade', 'The Guilt of Grove', 'Moralizers of Mead'],
+    leaderNames: CLAREMONT_LEADER_NAMES,
+  },
+  claremontFaithful: {
+    spec: CLAREMONT_FAITHFUL_MAP,
+    slots: CLAREMONT_SLOTS,
+    description: 'The Claremont Colleges (Faithful): the same nine nations laid out as on Google Maps. Pomona North sits north of 6th St beside CMC, KGI is out past the Packing House in the south-west with the School of Theology across Foothill in the north-west, and the Tropical Lei is across Foothill from Pitzer. Less balanced than the standard Claremont map: in bot games the Grad Schools win most often.',
+    factions: CLAREMONT_FACTIONS,
+    leaderNames: CLAREMONT_LEADER_NAMES,
   },
 };

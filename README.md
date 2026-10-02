@@ -33,7 +33,8 @@ failing seed and prints the state around the failing action.
 1. **Setup screen.** Choose 3 to 9 seats, name each leader (and give them a silly leader name for the order
    announcements), and mark each seat human or bot. Pick Quick Start (a preset map: the designed board, the
    photographed Table of 2026, Eurasia, or the Claremont Colleges: nine nations in three teams, out to the Villages, with Foothill, Claremont
-   Blvd, Dartmouth and 6th St as navigable rivers) or Full Game (build the map tile by tile), optionally turn on "Always prompt every eligible player" at reaction windows or the
+   Blvd, Dartmouth and 6th St as navigable rivers; or Claremont (Faithful), the same nations laid out as on
+   Google Maps) or Full Game (build the map tile by tile), optionally turn on "Always prompt every eligible player" at reaction windows or the
    optional house rules (food spoils above a cap per city held; a hand limit of 7 cards), pick how
    bloody combat is (by default only a 6 kills an enemy soldier, as in the rules; or, as a variant, every 4, 5 or 6), choose
    simultaneous (the default: Generals write secret orders, then everything resolves at once and a

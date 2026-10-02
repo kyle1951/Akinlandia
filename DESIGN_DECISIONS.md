@@ -305,3 +305,32 @@ Both are off by default and are switched on in the setup screen or the online lo
       - The extra 6th St row put another hex between the nations on either side of it. Walker Beach and Huntley Bookstore each moved one hex so that Big Bridges and The New Village still fit by rule.
     - **Ports.** Riverside cities: Galileo Hall, Hixon Court, Denison Library, Frary, Walker Beach, Honnold Library, Huntley Bookstore, and the open cities The Tropical Lei, Big Bridges, Botanic Garden, The Motley, Roberts Pavilion, 21 Choices, The Mall, Smith Campus Center, Drucker School and The Old Village.
     - **Bots.** They sail along rivers in the ship rounds and take their ships with them when they march along one. In 32 nine-player bot games they built about 12 ships a game and sailed a river about 15 times a game.
+
+### The Claremont Colleges (Faithful) (requested 2026-10-01)
+
+118. **A second Claremont map, laid out as on Google Maps.** The user asked whether "a more faithful map would generate a fairer outcome", noting that "the tropical lei is on the other side of Foothill", and then asked to deploy it "as Claremont (Faithful) map variation". The standard map (decision 113) stays as it is. `scripts/genClaremontFaithful.ts` writes `src/data/claremontFaithfulMap.ts`, registered as `claremontFaithful` with the same nations, factions and leader names.
+    - **Where things really are** (looked up in Google Maps):
+      - Pomona North (Frary, Walker Beach, Smith Tower) is north of 6th St beside CMC, across Amherst Ave. 6th St divides Pomona North from Pomona South.
+      - KGI is in the far south-west, past the Village and the Packing House (21 Choices, the New Village).
+      - The School of Theology (Kresge Chapel, Theology Library) is across Foothill in the north-west, with the Botanic Garden.
+      - The Tropical Lei is on the north side of Foothill, out east.
+      - Dartmouth Ave ends at 8th St by Honnold. Keck Science stands where Scripps, Pitzer and CMC meet, and the Athenaeum on the CMC–Pomona North line.
+    - **Squeezed distances.** The real campuses differ greatly in size; the Consortium is two buildings. So distances are squeezed until every nation has room to farm. Which side of each street a place is on, and who neighbours whom, follows the real map.
+    - **The same rules as decision 113, with three changes.**
+      - KGI and the School of Theology are one nation with a city at each end of the west side, so their starting cities are far apart.
+      - A first-turn city may be two hexes out (one turn's march) when its real place is farther. Only the Tropical Lei is: across Foothill from Pitzer.
+      - Each open city is placed as near its real spot as the rules allow.
+    - **Contested pairs.** Pitzer touches only CMS colleges, and CGU only Mudd and Scripps among the other teams. Given that, only one pairing gives every nation two contested cities and every pair of teams three:
+
+      | Pair | Contested cities |
+      |---|---|
+      | CMS v Sagehens | the Athenaeum (CMC–Pomona North), the Mounds (CMC–Pitzer), Keck Science (Scripps–Pitzer) |
+      | CMS v Grad Schools | Drucker School (Mudd–CGU), the Motley (Scripps–CGU), the Botanic Garden (Mudd–KGI/Theology) |
+      | Sagehens v Grad Schools | the Skyspace (Pomona North–Consortium), the Old Village (Pomona South–Consortium), the New Village (Pomona South–KGI) |
+
+    - **Names.** New: Smith Tower, the Skyspace, McAlister Center. Left out: Big Bridges, Strehle Track, Smith Campus Center. CGU's first-turn city is the Theology Library, just across Foothill from Kresge Chapel.
+    - **Less fair, by measurement.** Over 100 nine-player bot games (simultaneous orders):
+      - The Grad Schools won 63%, the Sagehens 22% and CMS 15%. CGU alone won 29% and Mudd 3%.
+      - On the standard map the split is CMS 46%, Grad Schools 35%, Sagehens 19%.
+      - A plausible cause, untested: the real map lines the three Grad Schools up along the west edge with nobody behind them, while CMS sits in the middle with enemies on both sides.
+      - The map's description says so, and the standard map stays the default Claremont choice.
